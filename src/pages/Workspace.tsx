@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import { useState } from "react";
 import { SetupRange } from "../components/SetupRange";
+import { LivePrice, MarketWatch } from "../components/LiveMarkets";
 export function PlanCard({ plan }: { plan: Plan }) {
   return (
     <Link
@@ -58,6 +59,7 @@ export function PlanCard({ plan }: { plan: Plan }) {
         </Badge>
       </div>
       <h3>{plan.title}</h3>
+      <LivePrice market={plan.market} />
       <div className="card-entry">
         <span>ENTRY RANGE</span>
         <strong>
@@ -118,6 +120,7 @@ export function Setups() {
       >
         Check the entry, find your size, and decide on your own terms.
       </PageTitle>
+      <MarketWatch />
       <div className="workspace-banner">
         <span className="banner-symbol">
           <img src="/brand/pact-mark.svg" alt="" width="35" height="27" />

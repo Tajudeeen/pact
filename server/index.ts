@@ -5,6 +5,7 @@ import { PactService } from "./service";
 import { createApp } from "./app";
 import { DreamDex } from "./dreamdex";
 import { existsSync } from "node:fs";
+import { MarketFeed, readQuotes } from "./market-feed";
 const port = Number(process.env.PORT ?? 8787),
   origin =
     process.env.PACT_ORIGIN ??
@@ -20,7 +21,15 @@ if (enabled && (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)))
 const store = new Store(process.env.PACT_DATABASE ?? ".data/pact.sqlite"),
   venue = enabled ? new DreamDex(key as `0x${string}`) : null;
 const service = new PactService(store, venue, enabled);
-const app = createApp(service, origin, venue?.key?.address ?? null);
+const marketFeed = new MarketFeed(() => readQuotes(() => new DreamDex()));
+const app = createApp(
+  service,
+  origin,
+  venue?.key?.address ?? null,
+  undefined,
+  undefined,
+  () => marketFeed.read(),
+);
 app.get("*", async (c, next) => {
   c.header(
     "Content-Security-Policy",

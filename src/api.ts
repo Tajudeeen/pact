@@ -12,18 +12,29 @@ export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
-  if (browserPreview) {
+  if (browserPreview && path !== "/markets") {
     const { previewApi } = await import("./preview/runtime");
     return previewApi<T>(path, options);
   }
-  const response = await fetch("/api" + path, {
-    method: options.method ?? "GET",
-    credentials: "same-origin",
-    headers:
-      options.body === undefined ? {} : { "Content-Type": "application/json" },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    signal: options.signal,
-  });
+  const livePreview = browserPreview && path === "/markets";
+  const response = await fetch(
+    (livePreview
+      ? "https://pact-testnet.tajudeenowoeteniyan.workers.dev"
+      : "") +
+      "/api" +
+      path,
+    {
+      method: options.method ?? "GET",
+      credentials: livePreview ? "omit" : "same-origin",
+      headers:
+        options.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" },
+      body:
+        options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
+    },
+  );
   const data = await response.json();
   if (!response.ok)
     throw new ApiError(

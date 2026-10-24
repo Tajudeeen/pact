@@ -1,3 +1,4 @@
+import { MarketHero, MarketWatch } from "../components/LiveMarkets";
 import { GateMotion } from "../components/GateMotion";
 import {
   ArrowRight,
@@ -95,62 +96,12 @@ export function Landing() {
           <div className="hero-visual">
             <div className="visual-grid" />
             <div className="floating-label">
-              <span className="signal-dot" /> A SHARED IDEA. A PERSONAL CHECK.
+              <span className="signal-dot" /> LIVE MARKET. YOUR TERMS.
             </div>
-            <article className="sample-plan">
-              <div className="card-top">
-                <span className="coin">₿</span>
-                <div>
-                  <strong>BTC pullback</strong>
-                  <small>BTC-PERP · Long</small>
-                </div>
-                <Badge tone="neutral">Practice</Badge>
-              </div>
-              <div className="sample-price">
-                <span>ENTRY RANGE</span>
-                <strong>
-                  67,400 <span>to</span> 67,800
-                </strong>
-              </div>
-              <div className="range-track">
-                <span className="stop-dot" />
-                <span className="entry-block" />
-                <span className="target-dot" />
-              </div>
-              <div className="range-labels">
-                <span>
-                  Stop
-                  <br />
-                  <b>66,400</b>
-                </span>
-                <span>
-                  Entry
-                  <br />
-                  <b>67,600</b>
-                </span>
-                <span>
-                  Target
-                  <br />
-                  <b>71,000</b>
-                </span>
-              </div>
-              <div className="personal-check">
-                <ShieldCheck size={21} />
-                <div>
-                  <strong>Your account. Your check.</strong>
-                  <small>
-                    Size depends on your rules and current conditions.
-                  </small>
-                </div>
-                <Check size={18} />
-              </div>
-              <Link to="/p/btc-pullback" className="sample-action">
-                Check this setup for me <ArrowRight size={18} />
-              </Link>
-            </article>
+            <MarketHero />
             <GateMotion />
             <span className="visual-caption">
-              Illustrative practice setup · simulated prices
+              Live testnet quotes · practice setups remain simulated
             </span>
           </div>
         </section>
@@ -160,6 +111,7 @@ export function Landing() {
             Execution built around <b>dreamDEX</b> on Somnia
           </span>
         </div>
+        <MarketWatch />
         <section className="problem-section">
           <div className="eyebrow">THE PRICE OF “JUST COPY THE TRADE”</div>
           <h2>

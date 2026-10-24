@@ -8,6 +8,24 @@ import { createApp } from "../server/app";
 import { DreamDex } from "../server/dreamdex";
 import type { Intent } from "../src/core/types";
 import assets from "./assets.generated.json";
+import { MarketFeed, readQuotes } from "../server/market-feed";
+import type { QuoteObservation } from "../src/core/markets";
+
+export class PactMarketFeed extends DurableObject<Cloudflare.Env> {
+  private feed: MarketFeed;
+  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+    super(ctx, env);
+    this.feed = new MarketFeed(
+      () => readQuotes(() => new DreamDex(undefined, WebSocket)),
+      () => Date.now(),
+      ctx.storage.kv.get<QuoteObservation[]>("last-quotes") ?? [],
+      (rows) => ctx.storage.kv.put("last-quotes", rows),
+    );
+  }
+  async quotes() {
+    return this.feed.read();
+  }
+}
 
 const terminal = new Set(["blocked", "rejected", "closed"]);
 export class PactLane extends DurableObject<Cloudflare.Env> {
@@ -122,6 +140,32 @@ const csp =
 export default {
   async fetch(request, env): Promise<Response> {
     const path = new URL(request.url).pathname;
+    if (path === "/api/markets") {
+      const headers: Record<string, string> = {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "X-Content-Type-Options": "nosniff",
+      };
+      if (request.method !== "GET")
+        return Response.json(
+          { code: "METHOD_NOT_ALLOWED" },
+          { status: 405, headers },
+        );
+      try {
+        return Response.json(
+          await env.PACT_MARKETS.getByName("tokyo-public-quotes").quotes(),
+          { headers },
+        );
+      } catch {
+        return Response.json(
+          {
+            code: "MARKETS_UNAVAILABLE",
+            message: "Live market reads are temporarily unavailable.",
+          },
+          { status: 503, headers },
+        );
+      }
+    }
     if (path.startsWith("/api/")) {
       // One coordination atom per configured owner/operator lane, including its nonce.
       const lane = env.PACT_LANE.getByName(

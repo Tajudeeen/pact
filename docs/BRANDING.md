@@ -35,3 +35,7 @@ The price rail only places decorative markers. All exact amounts and trading dec
 ### Verification of this revision
 
 All 68 behavioral tests pass. Standard and preview builds, Worker bundling and Cloudflare type checking pass. Managed-browser inspection checked the new mark and all official attribution assets, backdrop pause persistence, desktop landing/workflow/setup tickets, and a 390-pixel iframe with a 375-pixel content viewport. Landing and workspace had no horizontal overflow in that narrow viewport. Opening the workspace reset scroll to zero. This is responsive layout evidence, not physical-device or mobile-wallet qualification.
+
+## Symbol-only revision
+
+The current mark uses an angular bowl, beveled corners, detached stem, copper diagonal link and terminal detail. The visible text “pact” and its dot are removed from the logo lockup. The accessible name remains Pact, and the official dreamDEX attribution stays below the symbol. The favicon uses the same geometry. The hero now displays live testnet quotes through the [public quote integration](LIVE_MARKETS.md).

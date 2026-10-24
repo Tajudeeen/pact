@@ -23,7 +23,7 @@ export function App() {
       <BrandAtmosphere />
       {browserPreview && (
         <div className="preview-banner" role="note">
-          Build preview · Practice only · Saved in this browser
+          Live testnet quotes · Trades simulated in this browser
           <button
             type="button"
             onClick={() =>

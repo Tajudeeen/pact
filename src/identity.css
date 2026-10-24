@@ -1103,3 +1103,227 @@
     display: none;
   }
 }
+/* Symbol-only identity and observable live market quotes. */
+.brand-lockup .pact-symbol {
+  width: 68px;
+  height: 52px;
+}
+.brand-powered {
+  font-size: 7px;
+}
+.market-watch {
+  margin: 28px 0;
+}
+.landing > main > .market-watch {
+  max-width: 1150px;
+  margin: 34px auto 0;
+}
+.market-watch-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.market-watch-heading .eyebrow {
+  display: block;
+  color: var(--accent);
+  margin: 0 0 6px;
+  font: 9px var(--mono);
+  letter-spacing: 0.1em;
+}
+.market-watch-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+.quote-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.quote-tile {
+  padding: 20px;
+  background: #1c1f1b;
+  border: 1px solid var(--line);
+  border-left: 2px solid #8c7457;
+}
+.quote-tile-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  font: 11px var(--mono);
+}
+.quote-state {
+  font: 8px var(--mono);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #aeb3a4;
+}
+.quote-state i,
+.live-price-inline i {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #aa9b81;
+}
+[data-status="live"] .quote-state {
+  color: #a8c595;
+}
+[data-status="live"] .quote-state i,
+[data-status="live"].live-price-inline i {
+  background: #9bb784;
+}
+[data-status="stale"] .quote-state,
+[data-status="unavailable"] .quote-state {
+  color: #e2ac77;
+}
+.quote-caption {
+  display: block;
+  font: 8px var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: 22px;
+}
+.quote-value {
+  display: block;
+  font: 27px var(--mono);
+  letter-spacing: -0.055em;
+  margin: 11px 0 17px;
+  font-weight: 500;
+}
+.quote-book {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+  padding-bottom: 17px;
+  border-bottom: 1px dashed var(--line);
+  color: var(--muted);
+  font: 9px var(--mono);
+}
+.quote-book b {
+  font-weight: 400;
+  color: var(--ink);
+  margin-left: 6px;
+}
+.quote-provenance {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+  font: 8px var(--mono);
+}
+.quote-oracle {
+  display: block;
+  font: 8px var(--mono);
+  margin-top: 8px;
+  color: var(--muted);
+}
+.quote-error {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--warning);
+  margin: 12px 0 0;
+}
+.live-hero-card .quote-caption {
+  margin-top: 36px;
+}
+.live-hero-card .quote-value {
+  font-size: 42px;
+}
+.live-hero-card .quote-state {
+  color: #547044;
+}
+.live-hero-card .quote-state i {
+  background: #68865c;
+}
+.live-hero-card[data-status="stale"] .quote-state,
+.live-hero-card[data-status="unavailable"] .quote-state {
+  color: #98572e;
+}
+.live-hero-card .quote-explainer {
+  font-size: 10px;
+  line-height: 1.7;
+  margin: 23px 0 0;
+  color: #5d6555;
+}
+.live-hero-card .quote-error {
+  color: #98572e;
+}
+.live-price-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 9px;
+  row-gap: 5px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 18px;
+}
+.live-price-inline > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 8px var(--mono);
+  color: var(--muted);
+}
+.live-price-inline strong {
+  font: 12px var(--mono);
+  letter-spacing: -0.03em;
+}
+.live-price-inline small {
+  font: 8px var(--mono);
+  color: var(--muted);
+}
+[data-status="stale"].live-price-inline strong {
+  opacity: 0.7;
+}
+.big-range > .live-price-inline {
+  margin-bottom: 25px;
+}
+@media (max-width: 1100px) {
+  .landing > main > .market-watch {
+    margin-left: 35px;
+    margin-right: 35px;
+  }
+  .live-hero-card .quote-value {
+    font-size: 34px;
+  }
+}
+@media (max-width: 580px) {
+  .brand-lockup .pact-symbol {
+    width: 55px;
+    height: 42px;
+  }
+  .quote-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .landing > main > .market-watch {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  .quote-tile {
+    padding: 18px;
+  }
+  .quote-value {
+    font-size: 29px;
+  }
+  .live-hero-card .quote-value {
+    font-size: 35px;
+  }
+  .live-price-inline {
+    margin-top: 12px;
+  }
+  .quote-provenance {
+    font-size: 7px;
+  }
+  .brand-powered {
+    font-size: 6px;
+  }
+}

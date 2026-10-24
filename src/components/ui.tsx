@@ -12,15 +12,14 @@ import { browserPreview, short } from "../api";
 export function Mark() {
   return (
     <span className="brand-lockup">
-      <span className="wordmark">
+      <span className="wordmark" role="img" aria-label="Pact symbol">
         <img
           className="pact-symbol"
           src="/brand/pact-mark.svg"
           alt=""
-          width="44"
-          height="34"
+          width="64"
+          height="49"
         />
-        pact<span className="brand-dot">.</span>
       </span>
       <span className="brand-powered">
         built on{" "}

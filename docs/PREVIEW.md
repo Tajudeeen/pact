@@ -24,3 +24,7 @@ The server continues using Node SQLite and the durable executor for real testnet
 Desktop Chrome passed the complete simulated order path, refresh persistence and JSON receipt export. The official Playwright CDN returned an HTML error page. Downloading Chrome Headless Shell 151.0.7922.34 from Google's official Chrome-for-Testing storage succeeded, its ZIP integrity check passed, and its executable reported its version. The browser cache is under the task workspace because the executor's home-directory cache can reset between turns. Browser QA used the supported managed cloud browser rather than that local executable.
 
 No mobile-wallet approval or live testnet transaction was performed.
+
+## Live quote display
+
+The separate market-display provider fetches anonymous BTC/ETH testnet quotes from the deployed `/api/markets` endpoint without cookies. Quote failures are shown as unavailable or stale. The banner distinguishes live testnet quotes from browser-local simulated trades. This does not grant wallet, operator or trading access to the preview. See [LIVE_MARKETS.md](LIVE_MARKETS.md).

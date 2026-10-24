@@ -54,3 +54,7 @@ The shared service persists the signed transaction and hash before broadcasting.
 This is a small single-owner testnet deployment. The coordination atom is one operator and its shared nonce. Other operators require separate keys and lanes. Public traffic capacity, alarm costs under prolonged attention states, real fills, wallet/mobile compatibility and production load have not been qualified. Cloudflare plan quotas still apply.
 
 The private ChatGPT Site remains a separate browser-local practice preview. It has no operator key, durable backend or trading permissions. Updating it does not deploy this Worker, and deploying this Worker does not update that preview.
+
+## Public quotes
+
+Migration `v2-public-quotes` adds the separate `PactMarketFeed` class and `PACT_MARKETS` binding. Preserve the existing `PactLane` namespace and owner routing identity. The public quote object has no operator key or private account records. See [LIVE_MARKETS.md](LIVE_MARKETS.md) for the read-only API, caching, deadlines and freshness rules.

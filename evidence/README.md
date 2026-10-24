@@ -15,7 +15,7 @@ Evidence is separated by what it actually establishes. No live order hashes, fun
 
 The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
 
-Local checks: **68 tests across eight files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+Local checks: **78 tests across ten files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
 
 ## Browser preview verification
 
@@ -42,3 +42,7 @@ Deployment: https://pact-testnet.tajudeenowoeteniyan.workers.dev. Initial provid
 - No real testnet order was placed. Owner linking, gas/margin funding, matching entry/close fills and wallet/mobile signing remain pending.
 
 The Playwright CDN retry still returned invalid ZIP content. The previously downloaded official Chrome-for-Testing Headless Shell launches and reports version 151.0.7922.34. Deployment UI verification uses the managed cloud browser. Local browser installation does not establish wallet compatibility.
+
+## Live market quote integration
+
+The deployed endpoint returned actual BTC/ETH testnet marks, best bids/asks, pool addresses and index oracle timestamps. The rendered landing page displayed those observations as live. 78 tests across ten files pass, with cache, malformed/invalid mark, stale timestamp, partial outage, wrong-network and rendered stale-state coverage. Source outages retain the last valid observation and time, with a stale label. No quote check submits a trade. [Integration detail](../docs/LIVE_MARKETS.md).

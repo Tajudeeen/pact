@@ -8,6 +8,7 @@ import { Fault, PactService } from "./service";
 import { planSchema, policySchema } from "./validation";
 import { receiptOf } from "../src/core/receipt";
 import type { Scenario } from "../src/core/types";
+import type { MarketBoard } from "../src/core/markets";
 const id = z.string().min(1).max(150);
 export function createApp(
   service: PactService,
@@ -15,6 +16,7 @@ export function createApp(
   operator: string | null = null,
   allowedOwner?: string,
   rate = new Map<string, { at: number; count: number }>(),
+  getMarkets?: () => Promise<MarketBoard>,
 ) {
   const auth = new Auth(service.store, origin, service.now, allowedOwner),
     app = new Hono<{
@@ -92,6 +94,7 @@ export function createApp(
         "/api/auth/verify",
         "/api/health",
         "/api/network",
+        "/api/markets",
       ].includes(c.req.path) &&
       !/^\/api\/plans\/[^/]+$/.test(c.req.path)
     )
@@ -112,6 +115,15 @@ export function createApp(
       storage: service.store.db.prepare("SELECT 1").get() ? "ready" : "error",
     }),
   );
+  app.get("/api/markets", async (c) => {
+    if (!getMarkets)
+      throw new Fault(
+        "MARKETS_UNAVAILABLE",
+        "Live market reads are not configured.",
+        503,
+      );
+    return c.json(await getMarkets());
+  });
   app.get("/api/config", (c) => {
     const h = service.store.db
       .prepare("SELECT value FROM runtime WHERE key='heartbeat'")

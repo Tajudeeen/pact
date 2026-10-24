@@ -1,0 +1,39 @@
+{
+  "kind": "captured-read-only-observation",
+  "endpoint": "https://pact-testnet.tajudeenowoeteniyan.workers.dev/api/markets",
+  "notLiveAfterCapture": true,
+  "result": {
+    "source": "dreamDEX",
+    "chainId": 50383,
+    "readAt": 1792845532589,
+    "pollAfterMs": 10000,
+    "rows": [
+      {
+        "market": "BTC-PERP",
+        "pool": "0x4181dd08e73bbcdd1ba3e615a18f6abd941b94c0",
+        "mark": "80689.6873468677235",
+        "bid": "80871.1",
+        "ask": "80871.2",
+        "index": "80722.4992432267515",
+        "oracleUpdatedAt": 1792845531000,
+        "observedAt": 1792845531524,
+        "markValid": true,
+        "error": null,
+        "status": "live"
+      },
+      {
+        "market": "ETH-PERP",
+        "pool": "0xd6cb1dd58580b84d76068ac21594219ce03aeddf",
+        "mark": "2367.2076318505675",
+        "bid": "2370.42",
+        "ask": "2370.66",
+        "index": "2368.2470824885805",
+        "oracleUpdatedAt": 1792845531000,
+        "observedAt": 1792845531524,
+        "markValid": true,
+        "error": null,
+        "status": "live"
+      }
+    ]
+  }
+}

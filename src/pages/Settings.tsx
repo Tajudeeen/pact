@@ -1,3 +1,4 @@
+import { LivePrice } from "../components/LiveMarkets";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -157,6 +158,10 @@ export function NewPlan() {
       </PageTitle>
       <StartGate>
         <form className="panel form-panel" onSubmit={(e) => void submit(e)}>
+          <LivePrice market={market} />
+          <p className="tiny muted">
+            Live mark is a reference. Enter and approve your own setup terms.
+          </p>
           <div className="form-grid">
             <Field label="Setup name">
               <input

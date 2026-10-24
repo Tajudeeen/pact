@@ -29,6 +29,11 @@ import type {
   PreparedAction,
   Venue,
 } from "./venue";
+import {
+  WATCH_MARKETS,
+  emptyQuote,
+  type QuoteObservation,
+} from "../src/core/markets";
 export const CHAIN_ID = 50383;
 export const RPC = "https://api.hideki2.infra.testnet.somnia.network";
 export const WS = "wss://api.hideki2.infra.testnet.somnia.network/ws";
@@ -92,6 +97,52 @@ export class DreamDex implements Venue {
       markValid: state.markPriceOk,
       checkedAt: new Date().toISOString(),
     };
+  }
+  async quotes(): Promise<QuoteObservation[]> {
+    if ((await this.publicClient.getChainId()) !== CHAIN_ID)
+      throw new Error("Wrong quote network.");
+    const markets = await this.sdk.client.listPerpMarkets();
+    return Promise.all(
+      WATCH_MARKETS.map(async (market) => {
+        const m = markets.find((m) => `${m.baseSymbol}-PERP` === market);
+        if (!m)
+          return emptyQuote(
+            market,
+            "This market was not discovered on dreamDEX testnet.",
+          );
+        const observedAt = Date.now();
+        try {
+          const [state, book] = await Promise.all([
+            this.sdk.client.getPerpState(m.poolAddress),
+            this.sdk.client
+              .getSpotOrderBook(m.poolAddress, { depth: 1 })
+              .catch(() => null),
+          ]);
+          const valid = state.markPriceOk && state.markPrice > 0n;
+          const value = (raw: bigint | undefined) =>
+            raw !== undefined && raw > 0n
+              ? formatUnits(raw, m.quoteDecimals)
+              : null;
+          return {
+            market,
+            pool: m.poolAddress,
+            mark: valid ? value(state.markPrice) : null,
+            markValid: valid,
+            bid: value(book?.bids[0]?.price),
+            ask: value(book?.asks[0]?.price),
+            index: value(state.indexPrice),
+            oracleUpdatedAt:
+              state.indexUpdatedAt > 0n
+                ? Number(state.indexUpdatedAt) * 1000
+                : null,
+            observedAt,
+            error: valid ? null : "The protocol reports an invalid mark feed.",
+          };
+        } catch {
+          return emptyQuote(market, "This market's on-chain read failed.");
+        }
+      }),
+    );
   }
   async snapshot(plan: Plan, account: Account): Promise<MarketSnapshot> {
     const m = await this.market(plan.market),

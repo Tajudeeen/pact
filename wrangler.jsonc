@@ -6,9 +6,15 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "durable_objects": {
-    "bindings": [{ "name": "PACT_LANE", "class_name": "PactLane" }],
+    "bindings": [
+      { "name": "PACT_LANE", "class_name": "PactLane" },
+      { "name": "PACT_MARKETS", "class_name": "PactMarketFeed" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PactLane"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PactLane"] },
+    { "tag": "v2-public-quotes", "new_sqlite_classes": ["PactMarketFeed"] },
+  ],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
     "PACT_ORIGIN": "http://localhost:8788",
@@ -19,7 +25,10 @@
     "production": {
       "name": "pact-testnet",
       "durable_objects": {
-        "bindings": [{ "name": "PACT_LANE", "class_name": "PactLane" }],
+        "bindings": [
+          { "name": "PACT_LANE", "class_name": "PactLane" },
+          { "name": "PACT_MARKETS", "class_name": "PactMarketFeed" },
+        ],
       },
       "vars": {
         "PACT_ORIGIN": "https://pact-testnet.tajudeenowoeteniyan.workers.dev",

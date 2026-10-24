@@ -77,9 +77,13 @@ The tests cover sizing bounds and grids, long/short price directions, invalid ma
 
 Desktop browser practice QA passed through approval, simulated close, refresh persistence and receipt download. Mobile-wallet QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
 
+## Live market data
+
+The landing page and workspace now show actual BTC/ETH dreamDEX testnet marks, bid/ask levels and observation age. Quotes refresh automatically. Invalid or unavailable observations never fall back to fabricated prices. Retained prices are labeled stale. The private ChatGPT preview reads the same anonymous feed while its trades remain simulated. [Source, freshness and verification](docs/LIVE_MARKETS.md).
+
 ## Branding
 
-Pact uses a warm-charcoal and copper trade-ticket identity, a custom brace-and-P mark, and a subtle dreamDEX logo motion background. Official dreamDEX integration attribution stays separate. [Brand sources and verification](docs/BRANDING.md).
+Pact uses a warm-charcoal and copper trade-ticket identity, a custom angular brace-and-P symbol without a wordmark, and a subtle dreamDEX logo motion background. Official dreamDEX integration attribution stays separate. [Brand sources and verification](docs/BRANDING.md).
 
 ## Private build preview
 

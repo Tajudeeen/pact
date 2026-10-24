@@ -13,6 +13,7 @@ import { api, price, usd, short } from "../api";
 import { useApp, useLoad } from "../state";
 import type { Account, Plan, Decision, Intent } from "../core/types";
 import { Badge, ErrorBox, Loading, StartGate } from "../components/ui";
+import { LivePrice } from "../components/LiveMarkets";
 interface Preview {
   id: string;
   accountId: string;
@@ -74,6 +75,7 @@ export function PlanPage() {
                 </Badge>
               </div>
               <div className="big-range">
+                <LivePrice market={plan.market} />
                 <span>ENTRY RANGE</span>
                 <strong>
                   {price(plan.entryMin)} <small>to</small>
