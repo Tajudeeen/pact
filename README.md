@@ -76,6 +76,10 @@ The tests cover sizing bounds and grids, long/short price directions, invalid ma
 
 Desktop browser practice QA passed through approval, simulated close, refresh persistence and receipt download. Mobile-wallet QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
 
+## Branding
+
+Pact uses dreamDEX’s dark slate and purple visual palette with official logo attribution. Its own name and mark remain distinct. [Brand sources and verification](docs/BRANDING.md).
+
 ## Private build preview
 
 [Open Pact on ChatGPT Sites](https://pact-build-preview.deeen-code.chatgpt.site). Access is private to the owner. Start with **Try it without a wallet**. Explore the current screens, compare practice accounts, edit risk rules, publish a practice setup, approve, close and download a receipt.
