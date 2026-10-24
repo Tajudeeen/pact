@@ -13,15 +13,13 @@ export function Mark() {
   return (
     <span className="brand-lockup">
       <span className="wordmark">
-        <svg width="25" height="29" viewBox="0 0 25 29" aria-hidden="true">
-          <path
-            d="M3 26V5h10a7 7 0 0 1 0 14H8"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path d="m16 14 6-6" stroke="var(--accent)" strokeWidth="4" />
-        </svg>
+        <img
+          className="pact-symbol"
+          src="/brand/pact-mark.svg"
+          alt=""
+          width="44"
+          height="34"
+        />
         pact<span className="brand-dot">.</span>
       </span>
       <span className="brand-powered">

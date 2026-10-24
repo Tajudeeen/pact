@@ -213,38 +213,90 @@ export function Landing() {
             </Link>
           </div>
           <div className="step-grid">
-            {[
-              [
-                Link2,
-                "01 / SHARE",
-                "Publish the setup",
-                "Define an entry range, stop, target and entry window. Share one link.",
-              ],
-              [
-                ShieldCheck,
-                "02 / CHECK",
-                "Make it personal",
-                "Check current conditions against your account and risk rules. Get a size, or a clear refusal.",
-              ],
-              [
-                ScanLine,
-                "03 / VERIFY",
-                "Keep the receipt",
-                "Approve one setup. Follow the order timeline and inspect the recorded outcome.",
-              ],
-            ].map(([Icon, n, t, d]) => {
-              const I = Icon as typeof Link2;
-              return (
-                <article className="step-card" key={String(n)}>
-                  <div className="step-top">
-                    <I size={26} />
-                    <span>{String(n)}</span>
-                  </div>
-                  <h3>{String(t)}</h3>
-                  <p>{String(d)}</p>
-                </article>
-              );
-            })}
+            <article className="step-card step-share">
+              <div className="step-top">
+                <Link2 size={20} />
+                <span>01 / SHARE</span>
+              </div>
+              <div className="step-art setup-slip" aria-hidden="true">
+                <span>THE SHARED IDEA</span>
+                <strong>
+                  BTC <i>/</i> LONG
+                </strong>
+                <div>
+                  <span>
+                    ENTRY
+                    <br />
+                    <b>67,400–67,800</b>
+                  </span>
+                  <span>
+                    STOP
+                    <br />
+                    <b>66,400</b>
+                  </span>
+                  <span>
+                    TARGET
+                    <br />
+                    <b>71,000</b>
+                  </span>
+                </div>
+                <small>Illustrative practice terms</small>
+              </div>
+              <h3>Publish the setup</h3>
+              <p>
+                Define the entry range, stop, target and window. Share one set
+                of terms.
+              </p>
+            </article>
+            <article className="step-card step-check">
+              <div className="step-top">
+                <ShieldCheck size={20} />
+                <span>02 / CHECK</span>
+              </div>
+              <div className="step-art decision-slips" aria-hidden="true">
+                <div>
+                  <span>STANDARD ACCOUNT</span>
+                  <strong>
+                    <Check size={14} /> Within terms
+                  </strong>
+                </div>
+                <div>
+                  <span>LATE ARRIVAL</span>
+                  <strong>× Entry missed</strong>
+                </div>
+                <small>Illustrative practice decisions</small>
+              </div>
+              <h3>Make it personal</h3>
+              <p>
+                One idea can earn different decisions. Your account and your
+                rules set the size.
+              </p>
+            </article>
+            <article className="step-card step-record">
+              <div className="step-top">
+                <ScanLine size={20} />
+                <span>03 / VERIFY</span>
+              </div>
+              <div className="step-art receipt-slip" aria-hidden="true">
+                <div>
+                  <span>PACT / RECEIPT</span>
+                  <span className="receipt-mini-mark">{"{P}"}</span>
+                </div>
+                <p>
+                  Approval <b>Recorded</b>
+                </p>
+                <p>
+                  Execution <b>Observed</b>
+                </p>
+                <div className="receipt-barcode" />
+                <small>Illustrative practice record</small>
+              </div>
+              <h3>Keep the receipt</h3>
+              <p>
+                Follow the execution trail. Take the terms and observed outcome
+                with you.
+              </p>
+            </article>
           </div>
         </section>
         <section className="honesty-section">

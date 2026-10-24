@@ -19,9 +19,21 @@ import {
   StartGate,
 } from "../components/ui";
 import { useState } from "react";
+import { SetupRange } from "../components/SetupRange";
 export function PlanCard({ plan }: { plan: Plan }) {
   return (
-    <Link className="plan-card" to={"/p/" + plan.id}>
+    <Link
+      className="plan-card"
+      data-environment={plan.mode}
+      data-direction={plan.direction}
+      to={"/p/" + plan.id}
+    >
+      <div className="ticket-kicker">
+        <span>SETUP / V{plan.version}</span>
+        <span>
+          {plan.mode === "replay" ? "PRACTICE · SIMULATED" : "TOKYO · TESTNET"}
+        </span>
+      </div>
       <div className="card-top">
         <span
           className={"coin " + (plan.market.startsWith("ETH") ? "eth" : "")}
@@ -52,6 +64,7 @@ export function PlanCard({ plan }: { plan: Plan }) {
           {price(plan.entryMin)} <span>–</span> {price(plan.entryMax)}
         </strong>
       </div>
+      <SetupRange {...plan} />
       <div className="card-levels">
         <div>
           <small>Stop</small>
@@ -62,8 +75,10 @@ export function PlanCard({ plan }: { plan: Plan }) {
           <span>{price(plan.target)}</span>
         </div>
         <div>
-          <small>Environment</small>
-          <span>{plan.mode === "replay" ? "Practice" : "Tokyo testnet"}</span>
+          <small>Entry window</small>
+          <span>
+            {Date.now() > plan.expiresAt ? "Expired" : "Check before approval"}
+          </span>
         </div>
       </div>
       <div className="card-foot">
@@ -76,7 +91,9 @@ export function PlanCard({ plan }: { plan: Plan }) {
                 minute: "2-digit",
               }) + " entry close"}
         </span>
-        <ArrowUpRight size={20} />
+        <span className="ticket-open">
+          Check this setup <ArrowUpRight size={16} />
+        </span>
       </div>
     </Link>
   );
@@ -102,7 +119,9 @@ export function Setups() {
         Check the entry, find your size, and decide on your own terms.
       </PageTitle>
       <div className="workspace-banner">
-        <span className="banner-symbol">↗</span>
+        <span className="banner-symbol">
+          <img src="/brand/pact-mark.svg" alt="" width="35" height="27" />
+        </span>
         <div>
           <strong>Start with the same idea. See different decisions.</strong>
           <p>

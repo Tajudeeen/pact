@@ -1,4 +1,5 @@
-import { Route, Routes, Link } from "react-router";
+import { Route, Routes, Link, useLocation } from "react-router";
+import { useLayoutEffect } from "react";
 import { Shell } from "./components/ui";
 import { Landing } from "./pages/Landing";
 import { Setups, Positions } from "./pages/Workspace";
@@ -7,13 +8,30 @@ import { OrderPage } from "./pages/Order";
 import { Rules, NewPlan, AccountPage } from "./pages/Settings";
 import { Evidence } from "./pages/Evidence";
 import { browserPreview } from "./api";
+import { BrandAtmosphere } from "./components/BrandAtmosphere";
 export function App() {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    document.scrollingElement?.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant",
+    });
+  }, [pathname]);
   return (
     <>
+      <BrandAtmosphere />
       {browserPreview && (
         <div className="preview-banner" role="note">
           Build preview · Practice only · Saved in this browser
-          <button type="button" onClick={() => void import("./preview/runtime").then(m => m.resetPreview())}>Reset preview</button>
+          <button
+            type="button"
+            onClick={() =>
+              void import("./preview/runtime").then((m) => m.resetPreview())
+            }
+          >
+            Reset preview
+          </button>
         </div>
       )}
       <Routes>

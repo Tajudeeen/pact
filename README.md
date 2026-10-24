@@ -79,7 +79,7 @@ Desktop browser practice QA passed through approval, simulated close, refresh pe
 
 ## Branding
 
-Pact uses dreamDEX’s dark slate and purple visual palette with official logo attribution. Its own name and mark remain distinct. [Brand sources and verification](docs/BRANDING.md).
+Pact uses a warm-charcoal and copper trade-ticket identity, a custom brace-and-P mark, and a subtle dreamDEX logo motion background. Official dreamDEX integration attribution stays separate. [Brand sources and verification](docs/BRANDING.md).
 
 ## Private build preview
 
