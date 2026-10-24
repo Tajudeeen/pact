@@ -43,6 +43,15 @@ export function evaluate(
       "STALE_DATA",
       "Market or account data is too old. Refresh before deciding.",
     );
+  if (
+    !snapshot.markValid ||
+    !new D(snapshot.mark).isFinite() ||
+    new D(snapshot.mark).lte(0)
+  )
+    return block(
+      "INVALID_MARK",
+      "A valid mark price is required. Refresh before deciding.",
+    );
   if (!snapshot.permitted)
     return block(
       "PROTOCOL_BLOCKED",

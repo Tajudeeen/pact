@@ -41,6 +41,8 @@ export function receiptOf(intent: Intent): Receipt {
     direction: intent.plan.direction,
     approvedQuantity: intent.decision.quantity,
     approvedLimit: intent.decision.limit,
+    executionLimit: intent.execution?.limit ?? null,
+    executionPlannedLoss: intent.execution?.plannedLoss ?? null,
     fills: intent.fills,
     grossPnl: gross?.toFixed() ?? null,
     tradingFees: fees.toFixed(),

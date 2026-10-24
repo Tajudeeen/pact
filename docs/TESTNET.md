@@ -31,6 +31,19 @@ A $25 server notional cap applies in addition to personal limits. A $25 limit is
 5. Close from Pact and reconcile the close hash and fills. If outside exposure changes or the close cannot safely proceed, manage the account manually in dreamDEX and record the limitation.
 6. Export the receipt and capture the demo. Actual funding remains an incomplete component, so do not describe it as complete net PnL.
 
+## Recover an order
+
+An attention state retains its planned-risk reservation. The worker keeps checking the saved transaction. On the order page, **Check recovery** runs the same read-only check immediately. It sends no transaction and does not grant new trading consent.
+
+1. Read the named reason and follow the saved hash to the explorer. Keep the dedicated owner account separate from other trading.
+2. For invalid marks or temporary RPC failures, wait for fresh valid data. If the observed entry fills and current position still match, Pact resumes monitoring. Monitoring remains unavailable while the observations are invalid.
+3. For pending entry or close transactions, inspect the original hash and operator nonce. A two-minute timeout is measured from that action's recording time, not from the original trade. Recovery keeps its entry/close identity across restarts. Do not send a second order to guess what happened.
+4. A successful close receipt still requires matching fills and a fresh flat-position read. If the account is not flat, risk stays reserved. Inspect the unexpected position in dreamDEX. Recovery will recheck it without placing another close.
+5. For a reverted close, unexpected fill, missing durable action, or external position change, use **Inspect position in dreamDEX**. Manage the account there after checking any outstanding transaction. Pact does not retry a reverted close, force a changed position closed, invent missing fill evidence, or mark an external close as its own execution. An externally managed or unresolved order can remain in attention and block further Pact trading.
+6. If another account's unresolved action blocks the shared operator, reconcile it first. An urgent exit may require direct management in dreamDEX. Do not run a second operator process or clear action rows to bypass the gate.
+
+These behaviors are covered with controlled local transports and an actual SQLite reopen, plus the rendered recovery UI. They still require qualification against real testnet fills. No live order has been placed as part of these tests.
+
 ## Mainnet release gate
 
 Mainnet is intentionally blocked by chain ID 50383. Before a mainnet release: confirm published addresses/SDK compatibility, implement a liquidation-buffer check, qualify stronger close protection, settle actual funding/gas attribution, prove recovery and revocation behavior, complete browser/mobile wallet QA, and obtain authorization for funded real-money execution. The bounty's final $200 requires actual mainnet orders within 30 days of launch, not simply a configuration flag.

@@ -16,6 +16,24 @@ const p = seededPlans(now)[0],
   };
 const s = replaySnapshot(p, a, now);
 describe("personal risk admission", () => {
+  it.each([
+    { mark: "0", markValid: false },
+    { mark: "67595", markValid: false },
+    { mark: "NaN", markValid: true },
+    { mark: "0", markValid: true },
+  ])(
+    "rejects an invalid mark even if entry permission is true: %j",
+    (invalid) => {
+      const result = evaluate(
+        p,
+        DEFAULT_POLICY,
+        { ...s, ...invalid, permitted: true },
+        now,
+      );
+      expect(result.reason).toBe("INVALID_MARK");
+      expect(result.quantity).toBe("0");
+    },
+  );
   it("bounds planned loss and quantity grid across risk budgets", () => {
     for (let n = 1; n <= 100; n++) {
       const risk = (n / 10).toFixed(1),

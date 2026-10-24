@@ -33,6 +33,7 @@ export interface MarketSnapshot {
   bid: string;
   ask: string;
   mark: string;
+  markValid: boolean;
   tick: string;
   lot: string;
   minQty: string;
@@ -101,6 +102,7 @@ export interface Intent {
   mode: Mode;
   state: IntentState;
   decision: Decision;
+  execution?: Decision;
   plan: Plan;
   policy: Policy;
   createdAt: number;
@@ -130,6 +132,8 @@ export interface Receipt {
   direction: Direction;
   approvedQuantity: string;
   approvedLimit: string;
+  executionLimit: string | null;
+  executionPlannedLoss: string | null;
   fills: TradeFill[];
   grossPnl: string | null;
   tradingFees: string;

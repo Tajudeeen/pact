@@ -12,6 +12,10 @@ Start practice, open BTC pullback, compare **standard** with **arrives late**, t
 
 Try old data and thin liquidity. Use the lost-response account and inspect how uncertainty reconciles without another simulated send. Run `pnpm test` to inspect the restart, budget, ownership and UI consent cases. Read `evidence/README.md` for exactly what has and has not been demonstrated.
 
+## Challenge recovery locally
+
+Run `pnpm test tests/execution.test.ts tests/dreamdex.test.ts tests/recovery-ui.test.tsx`. The fixtures inject invalid marks and lost responses, age a trade before submitting its close, and reopen SQLite after a close timeout. The tests assert that no replacement action is prepared, risk stays reserved while the account is not flat, and the owner can recover through the rendered app. The adapter test decodes actual generated calldata and compares its price with the fresh checked decision. All market/chain transports in these tests are mocked. This does not establish a live testnet order.
+
 ## Actual testnet proof
 
 Pending. The submission is not ready until this section links actual entry/close hashes and a recorded demo. Do not represent practice receipts as testnet evidence.

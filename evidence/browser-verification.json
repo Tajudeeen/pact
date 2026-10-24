@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-10-24T02:44:40.326176+00:00",
+  "status": "unavailable",
+  "attempt": "Production React bundle with the actual Hono API and controlled venue, using local Chromium via Playwright",
+  "blocker": "Playwright Chromium executable was not installed. Installing the headless browser failed because the downloaded archive was truncated or not a ZIP.",
+  "executedBrowserChecks": [],
+  "passingAlternative": "Rendered React recovery through the real API and SQLite service in tests/recovery-ui.test.tsx",
+  "remaining": [
+    "Visual desktop and mobile browser QA",
+    "Mobile wallet approval",
+    "Funded testnet entry and exit",
+    "Deployed-origin verification"
+  ]
+}

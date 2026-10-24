@@ -219,6 +219,9 @@ export function createApp(
   app.post("/api/intents/:id/close", async (c) =>
     c.json(await service.close(c.get("owner"), c.req.param("id"))),
   );
+  app.post("/api/intents/:id/recover", async (c) =>
+    c.json(await service.recover(c.get("owner"), c.req.param("id"))),
+  );
   app.get("/api/intents/:id/receipt", (c) =>
     c.json(receiptOf(service.intent(c.get("owner"), c.req.param("id")))),
   );

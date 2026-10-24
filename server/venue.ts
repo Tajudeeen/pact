@@ -1,6 +1,5 @@
 import type {
   Account,
-  Decision,
   Intent,
   MarketSnapshot,
   Plan,
@@ -14,6 +13,13 @@ export interface PreparedAction {
   quoteDecimals: number;
   nonce: number;
   role: "entry" | "close";
+  recordedAt?: number;
+}
+export interface PositionObservation {
+  position: string;
+  mark: string;
+  markValid: boolean;
+  observedAt: number;
 }
 export type Observation = {
   state: "pending" | "reverted" | "filled" | "attention";
@@ -22,6 +28,7 @@ export type Observation = {
 };
 export interface Venue {
   snapshot(plan: Plan, account: Account): Promise<MarketSnapshot>;
+  position(plan: Plan, account: Account): Promise<PositionObservation>;
   prepare(intent: Intent, role: "entry" | "close"): Promise<PreparedAction>;
   broadcast(action: PreparedAction): Promise<void>;
   observe(action: PreparedAction): Promise<Observation>;

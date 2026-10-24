@@ -10,7 +10,8 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 
 - Complete **practice** workflow: publish, preview, approve, simulated fill, close, downloadable receipt.
 - Five account scenarios: standard, late entry, stale data, thin liquidity, lost response.
-- SQLite persistence, account-scoped reservations, unique approvals, fresh rechecks and restart recovery.
+- SQLite persistence, account-scoped reservations, unique approvals, exact execution rechecks and restart recovery.
+- Automatic recovery checks and an owner-only recovery button. Invalid marks pause exits. A close requires both matched fills and a fresh flat-position read.
 - EVM wallet sign-in and a separate, explicitly configured linked-operator testnet adapter.
 - Read-only probe passed: chain ID 50383, 21 discovered markets and a valid live mark. **No actual testnet order has been placed by this build yet.** See [evidence](evidence/README.md).
 - No deployment URL or demo recording yet. The GitHub repository remains private.
@@ -71,7 +72,7 @@ pnpm run doctor
 
 Use **`pnpm run doctor`**, not pnpm's unrelated built-in `pnpm doctor` command. The project's doctor is read-only and writes local connectivity results to `.data/doctor.json`. It never places orders or claims execution.
 
-The tests cover sizing bounds and grids, long/short price directions, stale/future data, exposure and budgets, duplicate approvals, consent expiry, cross-user isolation, policy changes, revoked plans, an actual SQLite close/reopen, uncertain broadcasts, persist-before-broadcast, and account-change/late-response consent invalidation in the rendered React flow.
+The tests cover sizing bounds and grids, long/short price directions, invalid marks, stale/future data, exposure and budgets, duplicate approvals, consent expiry, cross-user isolation, policy changes, revoked plans, actual SQLite close/reopen recovery, uncertain broadcasts, persist-before-broadcast, close-specific timeouts, flat-position confirmation, and account-change/late-response consent invalidation. A rendered React recovery test calls the real API and SQLite service. Adapter tests decode the actual signed-call payload with mocked transports to check that it uses the freshly evaluated price.
 
 Browser visual QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
 
@@ -88,13 +89,14 @@ Read [TESTNET.md](docs/TESTNET.md) before enabling. Start with a dedicated EOA a
 
 Testnet notional is capped at **25 USDso per entry**, in addition to the person's own cap. Chain **50383** is enforced. Mainnet trading is not implemented or enabled.
 
-The adapter uses official SDK discovery and raw-unit chain reads. Signed operator orders use viem's simulation, signing and broadcast, with the SDK's fill decoder. The exact signed transaction, hash and nonce are persisted before broadcast. A lost response is checked by hash, not turned into a fresh order. Only one unresolved operator transaction is permitted before new entries proceed.
+The adapter uses official SDK discovery and raw-unit chain reads. Signed operator orders use viem's simulation, signing and broadcast, with the SDK's fill decoder. The exact signed transaction, hash and nonce are persisted before broadcast. A lost response is checked by hash, not turned into a fresh order. New entries and closes both wait if another account has an unresolved operator transaction. An urgent position may need management directly in dreamDEX while that lane is blocked.
 
 ## Protection and execution limits
 
 - A linked bot cannot arm native TP/SL for the owner. **Pact monitors exits while its process is running.** This is not exchange-native protection, and planned risk is not a maximum loss.
 - The exposed ordinary linked-order path has no `reduceOnly` flag. Closing uses a **position-sized opposing FOK order**, after checking the position matches Pact's recorded fill. Outside trading between that check and inclusion can invalidate the assumption. Use a dedicated account without other bots or manual trades. A mismatch pauses automated management and requires review.
-- Successful receipt status is separate from observed fills. A missing or unexpected fill is an attention state, not success.
+- Successful receipt status is separate from observed fills. A missing or unexpected fill is an attention state, not success. A close is complete only after matched close fills and a fresh flat-position read.
+- Attention states are rechecked automatically. **Check recovery** on the order page performs the same read-only reconciliation. Valid matching positions resume monitoring. This never signs a replacement or retries a reverted close. See the [recovery runbook](docs/TESTNET.md#recover-an-order).
 - A crash after persistence but before broadcast can leave a transaction unsent. Pact does not blindly retry it or sign a replacement. Operator review is required. This favors preventing duplicates over guaranteeing delivery.
 - Testnet receipt net PnL stays incomplete until actual funding settlements are attributed. Gas is not silently converted into USDso.
 - Wallet sign-in supports EOA `personal_sign` only. Smart-account sign-in, WalletConnect QR pairing, Telegram login and AI drafting are not implemented.

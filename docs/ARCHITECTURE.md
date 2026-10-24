@@ -24,10 +24,12 @@ A shared setup gets an account-specific check, one explicit approval, and an ins
 2. A preview binds the setup, account, effective risk policy and current snapshot. It expires after 15 seconds.
 3. Approval verifies session ownership, current terms and policy, active reservations and budgets in `BEGIN IMMEDIATE`.
 4. A unique `(account, plan, version)` approval points to one intent. Repeated clicks return it.
-5. The single-process executor rechecks the account and market. A worse price, excess quantity/risk, lower size allowance or stale approval blocks submission.
-6. Before broadcasting testnet execution, an immutable action row contains the signed raw transaction, its computed hash, nonce and decoding metadata. The unique `(intent, role)` constraint prevents another action for the same leg.
-7. Reconciliation checks that hash, receipt status and decoded fill quantities. A lost response stays uncertain, with risk still reserved. It is never treated as a failed order to retry.
-8. An observed fill opens monitoring. Closing is a separate action and confirmed fills become a receipt.
+5. The single-process executor rechecks the account and market. A worse price, excess quantity/risk, lower size allowance or stale approval blocks submission. The approved `decision` remains immutable. A separate `execution` records the fresh decision and is the exact quantity/price supplied to simulation and signing. Receipts include both the approval bound and checked execution limit/planned risk.
+6. Before broadcasting testnet execution, an immutable action row contains the signed raw transaction, its computed hash, nonce, per-action `recordedAt` timestamp and decoding metadata. The unique `(intent, role)` constraint prevents another action for the same leg.
+7. Reconciliation checks that hash, receipt status and decoded fill quantities. A lost response stays uncertain, with risk still reserved. Timeouts use the matching action timestamp, with a matching submission-event fallback for older databases. Attention retains its leg identity by the durable action, and continues reconciliation. It is never treated as a failed order to retry.
+8. A matching entry fill and current position open monitoring. The monitor reads position and mark validity separately from entry admission, rejects invalid/nonpositive/stale/future marks, and pauses with a named attention reason.
+9. Closing is a separate action. Matched close fills and a fresh zero-position observation are both required before declaring it closed and releasing its reservation. Unknown or mismatched positions retain planned risk.
+10. The worker rechecks attention states. An owner-only, same-origin recovery endpoint runs the same reconciliation under the process lock. It only reads the existing action and position. It never signs, broadcasts, replaces or retries an order. A reverted close or externally changed position stays visible for management in dreamDEX. Both entry and close submissions share the unresolved-operator gate.
 
 The JSON record store is intentionally small. It is not a high-volume analytics schema. Monetary values are serialized as decimal strings. Approval/action identities are separate SQL columns with uniqueness constraints, not only JSON checks.
 

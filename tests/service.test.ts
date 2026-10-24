@@ -162,6 +162,12 @@ describe("testnet adapter boundary", () => {
       role: "entry",
     };
     const venue: Venue = {
+      position: async () => ({
+        position: "0",
+        mark: "67595",
+        markValid: true,
+        observedAt: now,
+      }),
       snapshot: async (p, a) =>
         replaySnapshot(p, { ...a, mode: "replay" }, now),
       prepare: async () => {

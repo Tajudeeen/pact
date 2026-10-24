@@ -23,7 +23,12 @@ import { privateKeyToAccount } from "viem/accounts";
 import Decimal from "decimal.js";
 import { rpcSocketConstructor } from "./socket";
 import type { Account, Intent, MarketSnapshot, Plan } from "../src/core/types";
-import type { Observation, PreparedAction, Venue } from "./venue";
+import type {
+  Observation,
+  PositionObservation,
+  PreparedAction,
+  Venue,
+} from "./venue";
 export const CHAIN_ID = 50383;
 export const RPC = "https://api.hideki2.infra.testnet.somnia.network";
 export const WS = "wss://api.hideki2.infra.testnet.somnia.network/ws";
@@ -142,6 +147,7 @@ export class DreamDex implements Venue {
       bid: formatUnits(book.bids[0].price, m.quoteDecimals),
       ask: formatUnits(book.asks[0].price, m.quoteDecimals),
       mark: formatUnits(state.markPrice, m.quoteDecimals),
+      markValid: state.markPriceOk && state.markPrice > 0n,
       tick: formatUnits(BigInt(m.tickSize), m.quoteDecimals),
       lot: formatUnits(BigInt(m.lotSize), m.baseDecimals),
       minQty: formatUnits(BigInt(m.minQuantity), m.baseDecimals),
@@ -170,6 +176,26 @@ export class DreamDex implements Venue {
       pool: m.poolAddress,
     };
   }
+  async position(plan: Plan, account: Account): Promise<PositionObservation> {
+    const start = Date.now();
+    if ((await this.publicClient.getChainId()) !== CHAIN_ID)
+      throw new Error("RPC chain is not Somnia Tokyo testnet.");
+    const m = await this.market(plan.market);
+    const [state, position] = await Promise.all([
+      this.sdk.client.getPerpState(m.poolAddress),
+      this.sdk.client.getPerpPosition({
+        marginBank: m.marginBank,
+        account: account.owner as Address,
+        pool: m.poolAddress,
+      }),
+    ]);
+    return {
+      position: formatUnits(position.size, m.baseDecimals),
+      mark: formatUnits(state.markPrice, m.quoteDecimals),
+      markValid: state.markPriceOk && state.markPrice > 0n,
+      observedAt: start,
+    };
+  }
   async prepare(
     intent: Intent,
     role: "entry" | "close",
@@ -179,9 +205,10 @@ export class DreamDex implements Venue {
       throw new Error("Wrong RPC chain.");
     const m = await this.market(intent.plan.market),
       owner = intent.owner as Address;
+    const execution = intent.execution ?? intent.decision;
     let isBid = intent.plan.direction === "long",
-      quantity = parseUnits(intent.decision.quantity, m.baseDecimals),
-      price = parseUnits(intent.decision.limit, m.quoteDecimals);
+      quantity = parseUnits(execution.quantity, m.baseDecimals),
+      price = parseUnits(execution.limit, m.quoteDecimals);
     if (role === "close") {
       const [p, book] = await Promise.all([
         this.sdk.client.getPerpPosition({

@@ -25,8 +25,21 @@ export function OrderPage() {
   const i = data.value;
   const close = async () => {
     setBusy(true);
+    setError(null);
     try {
       await api("/intents/" + id + "/close", { method: "POST", body: {} });
+      data.reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const recover = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/intents/" + id + "/recover", { method: "POST", body: {} });
       data.reload();
     } catch (e) {
       setError((e as Error).message);
@@ -96,7 +109,7 @@ export function OrderPage() {
                     blocked: "Conditions changed, nothing sent",
                     rejected: "Transaction rejected",
                     closing: "Close submitted",
-                    attention: "Manual review required",
+                    attention: "Needs attention, checking recovery",
                   }[i.state]
                 }
               </h2>
@@ -169,6 +182,32 @@ export function OrderPage() {
                   : "Monitored exits only act while Pact is running. Linked-key closes use position-sized opposing orders, with a dedicated-account requirement."}
               </p>
               <div className="receipt-actions">
+                {i.state === "attention" && (
+                  <>
+                    <p className="tiny muted" role="status">
+                      {i.error ??
+                        "Pact needs a fresh transaction and position check."}{" "}
+                      Pact keeps checking automatically. Recovery checks the
+                      saved transaction and position without sending another
+                      order.
+                    </p>
+                    <button
+                      className="button primary full"
+                      disabled={busy}
+                      onClick={() => void recover()}
+                    >
+                      {busy ? "Checking…" : "Check recovery"}
+                    </button>
+                    <a
+                      className="button outline full"
+                      href="https://app.testnet.dreamdex.io"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Inspect position in dreamDEX <ArrowUpRight size={16} />
+                    </a>
+                  </>
+                )}
                 <button
                   className="button outline full"
                   onClick={() => void download()}

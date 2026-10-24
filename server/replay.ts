@@ -11,6 +11,7 @@ export function replaySnapshot(
     bid: btc ? (late ? "69490" : "67590") : late ? "2600" : "2499",
     ask: btc ? (late ? "69500" : "67600") : late ? "2601" : "2500",
     mark: btc ? "67595" : "2499.5",
+    markValid: true,
     tick: btc ? "0.1" : "0.01",
     lot: btc ? "0.00001" : "0.001",
     minQty: btc ? "0.00013" : "0.004",

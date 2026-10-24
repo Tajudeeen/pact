@@ -336,22 +336,64 @@ export class PactService {
       .get(i.id, role) as { body: string } | undefined;
     return row ? (JSON.parse(row.body) as PreparedAction) : undefined;
   }
+  operatorBusy(except: string) {
+    return this.store
+      .list<Intent>("intent")
+      .some(
+        (other) =>
+          other.id !== except &&
+          other.mode === "testnet" &&
+          ["submitted", "unknown", "closing", "attention"].includes(
+            other.state,
+          ),
+      );
+  }
+  attention(i: Intent, type: string, detail: string) {
+    const unchanged = i.state === "attention" && i.error === detail;
+    i.state = "attention";
+    i.protection = "degraded";
+    i.error = detail;
+    if (!unchanged) this.event(i, type, detail);
+    else this.save(i);
+  }
+  async position(i: Intent, requireMark: boolean) {
+    const s = await this.venue!.position(
+      i.plan,
+      this.account(i.owner, i.accountId),
+    );
+    if (
+      !Number.isFinite(s.observedAt) ||
+      this.now() - s.observedAt > 5000 ||
+      s.observedAt > this.now() + 1000
+    )
+      throw new Error(
+        "Position observation is stale or future-dated. Pact will check again.",
+      );
+    if (!new Decimal(s.position).isFinite())
+      throw new Error(
+        "Position observation is invalid. Pact will check again.",
+      );
+    if (
+      requireMark &&
+      (!s.markValid ||
+        !new Decimal(s.mark).isFinite() ||
+        new Decimal(s.mark).lte(0))
+    )
+      throw new Error(
+        "Mark price is invalid. Exits are paused until a valid observation returns.",
+      );
+    return s;
+  }
+  matchesPosition(i: Intent, position: string) {
+    const p = new Decimal(position);
+    return (
+      p.abs().eq(i.decision.quantity) &&
+      p.gt(0) === (i.plan.direction === "long")
+    );
+  }
   async execute(i: Intent) {
     const a = this.account(i.owner, i.accountId);
-    if (
-      i.mode === "testnet" &&
-      this.store
-        .list<Intent>("intent")
-        .some(
-          (other) =>
-            other.id !== i.id &&
-            other.mode === "testnet" &&
-            ["submitted", "unknown", "closing", "attention"].includes(
-              other.state,
-            ),
-        )
-    )
-      return;
+    if (i.mode === "testnet" && this.operatorBusy(i.id)) return;
     if (this.now() - i.createdAt > 15000) {
       i.state = "blocked";
       this.event(
@@ -401,6 +443,9 @@ export class PactService {
       );
       return;
     }
+    // The immutable approval remains the consent envelope. Sign the exact fresh
+    // decision that passed it, rather than reusing the old price with new costs.
+    i.execution = fresh;
     if (i.mode === "replay") {
       i.state = a.scenario === "lost-response" ? "unknown" : "submitted";
       this.event(
@@ -416,13 +461,20 @@ export class PactService {
         );
       return;
     }
-    const action = await this.venue!.prepare(i, "entry");
-    if (this.now() - snapshot.observedAt > 5000 || this.now() >= p.expiresAt) {
+    const action = {
+      ...(await this.venue!.prepare(i, "entry")),
+      recordedAt: this.now(),
+    };
+    if (
+      this.now() - snapshot.observedAt > 5000 ||
+      this.now() - i.createdAt > 15000 ||
+      this.now() >= p.expiresAt
+    ) {
       i.state = "blocked";
       this.event(
         i,
         "stale_before_send",
-        "Signing finished after the quote expired. Nothing broadcast.",
+        "Signing finished after the quote or approval expired. Nothing broadcast.",
       );
       return;
     }
@@ -462,7 +514,7 @@ export class PactService {
           i.fills.push({
             role: "entry",
             quantity: i.decision.quantity,
-            price: i.decision.limit,
+            price: i.execution?.limit ?? i.decision.limit,
             fee: "0",
             at: this.now(),
           });
@@ -476,66 +528,148 @@ export class PactService {
       }
       return;
     }
-    const role = i.state === "closing" ? "close" : "entry",
+    // A close keeps its identity even after a timeout or process restart changes
+    // the intent to attention. Never fall back to observing the entry hash.
+    const role = this.action(i, "close") ? "close" : "entry",
       action = this.action(i, role);
     if (!action) {
-      i.state = "attention";
-      this.event(
+      this.attention(
         i,
         "missing_action",
-        "Submission state has no durable action. Review before trading.",
+        "Submission state has no durable action. Inspect the account in dreamDEX. No new order will be sent.",
       );
       return;
     }
     const observed = await this.venue!.observe(action);
     if (observed.state === "pending") {
-      if (this.now() - i.createdAt > 120000) {
-        i.state = "attention";
-        i.protection = "degraded";
-        this.event(
+      // Older databases have no action timestamp. Use the matching leg's durable
+      // event if available, never the age of the original approval.
+      const recordedAt =
+        action.recordedAt ??
+        i.events.find(
+          (e) =>
+            e.type ===
+            (role === "entry" ? "transaction_prepared" : "close_prepared"),
+        )?.at;
+      if (recordedAt !== undefined && this.now() - recordedAt > 120000)
+        this.attention(
           i,
           "pending_review",
-          "Transaction unresolved for over two minutes. Review its hash and nonce. No replacement action sent.",
+          "Transaction unresolved for over two minutes. Pact keeps checking its original hash and reserves the risk. Inspect the hash and nonce in dreamDEX if it stays pending.",
+        );
+      return;
+    }
+    if (observed.state === "reverted") {
+      if (role === "entry") {
+        i.state = "rejected";
+        i.error = observed.detail;
+        i.protection = "not_armed";
+        this.event(i, "transaction_reverted", observed.detail);
+      } else {
+        this.attention(
+          i,
+          "transaction_reverted",
+          "The close reverted. Inspect and manage the position in dreamDEX. Recovery will recheck this transaction but will not submit another close.",
         );
       }
       return;
     }
-    if (observed.state === "reverted") {
-      i.state = role === "entry" ? "rejected" : "attention";
-      i.error = observed.detail;
-      i.protection = "degraded";
-      this.event(i, "transaction_reverted", observed.detail);
-      return;
-    }
     if (observed.state === "attention") {
-      i.state = "attention";
-      i.protection = "degraded";
-      this.event(i, "receipt_needs_review", observed.detail);
+      this.attention(i, "receipt_needs_review", observed.detail);
       return;
     }
+    const valid =
+      observed.fills.length > 0 &&
+      observed.fills.every(
+        (f) =>
+          f.role === role &&
+          f.txHash === action.hash &&
+          new Decimal(f.quantity).isFinite() &&
+          new Decimal(f.quantity).gt(0) &&
+          new Decimal(f.price).isFinite() &&
+          new Decimal(f.price).gt(0) &&
+          (role === "close" ||
+            (i.plan.direction === "long"
+              ? new Decimal(f.price).lte(i.execution?.limit ?? i.decision.limit)
+              : new Decimal(f.price).gte(
+                  i.execution?.limit ?? i.decision.limit,
+                ))),
+      );
     const quantity = observed.fills.reduce(
       (a, f) => a.plus(f.quantity),
       new Decimal(0),
     );
-    if (!quantity.eq(i.decision.quantity)) {
-      i.state = "attention";
-      i.protection = "degraded";
-      this.event(
+    if (!valid || !quantity.eq(i.decision.quantity)) {
+      this.attention(
         i,
         "fill_size_mismatch",
-        "Confirmed fills differ from the approved FOK size. Manual review required.",
+        "Confirmed fills do not match the expected transaction, side, price or approved FOK size. Inspect the account in dreamDEX. No success is claimed.",
       );
       return;
     }
     i.fills = [...i.fills.filter((f) => f.role !== role), ...observed.fills];
+    this.save(i); // Preserve observed fills even if the subsequent position read fails.
+    const position = await this.position(i, role === "entry");
+    if (
+      role === "close"
+        ? !new Decimal(position.position).isZero()
+        : !this.matchesPosition(i, position.position)
+    ) {
+      this.attention(
+        i,
+        "position_mismatch",
+        role === "close"
+          ? "Close fills were observed, but the account is not flat. Inspect the remaining position in dreamDEX. Planned risk stays reserved."
+          : "Position changed outside Pact. Restore the expected dedicated position in dreamDEX before monitoring can resume.",
+      );
+      return;
+    }
     i.state = role === "entry" ? "open" : "closed";
     i.protection = role === "entry" ? "monitored" : "not_armed";
+    i.error = undefined;
     i.lastMonitorAt = this.now();
     this.event(
       i,
       role === "entry" ? "fill_observed" : "close_reconciled",
-      observed.detail,
+      role === "close"
+        ? "Close fills observed and the current account position is flat."
+        : observed.detail,
     );
+  }
+  async recover(owner: string, id: string) {
+    const i = this.intent(owner, id);
+    if (i.state !== "attention") return i;
+    if (this.running)
+      throw new Fault(
+        "EXECUTOR_BUSY",
+        "Executor is checking an order. Retry shortly.",
+      );
+    this.running = true;
+    try {
+      await this.recoverIntent(i);
+      return i;
+    } finally {
+      this.running = false;
+    }
+  }
+  async recoverIntent(i: Intent) {
+    try {
+      if (this.action(i, "entry") || this.action(i, "close")) {
+        await this.reconcile(i);
+      } else {
+        this.attention(
+          i,
+          "missing_action",
+          "No durable transaction is available to reconcile. Inspect the account in dreamDEX. No new order will be sent.",
+        );
+      }
+    } catch (error) {
+      this.attention(
+        i,
+        "recovery_unavailable",
+        (error as Error).message.slice(0, 200),
+      );
+    }
   }
   async close(owner: string, id: string) {
     const i = this.intent(owner, id);
@@ -551,7 +685,7 @@ export class PactService {
       i.fills.push({
         role: "close",
         quantity: i.decision.quantity,
-        price: i.decision.limit,
+        price: i.execution?.limit ?? i.decision.limit,
         fee: "0",
         at: this.now(),
       });
@@ -570,7 +704,24 @@ export class PactService {
       );
     this.running = true;
     try {
-      const action = await this.venue!.prepare(i, "close");
+      if (this.operatorBusy(i.id))
+        throw new Fault(
+          "OPERATOR_BUSY",
+          "Another operator transaction needs reconciliation. No close was sent. Inspect the position in dreamDEX if urgent.",
+        );
+      const position = await this.position(i, false);
+      if (!this.matchesPosition(i, position.position)) {
+        this.attention(
+          i,
+          "position_mismatch",
+          "Position changed outside Pact. Inspect the account in dreamDEX before closing.",
+        );
+        return i;
+      }
+      const action = {
+        ...(await this.venue!.prepare(i, "close")),
+        recordedAt: this.now(),
+      };
       const saved = this.store.atomic(() => {
         const result = this.store.db
           .prepare("INSERT OR IGNORE INTO actions VALUES(?,?,?,?)")
@@ -614,19 +765,13 @@ export class PactService {
           if (i.state === "reserved") await this.execute(i);
           else if (["submitted", "unknown", "closing"].includes(i.state))
             await this.reconcile(i);
+          else if (i.state === "attention" && i.mode === "testnet")
+            await this.recoverIntent(i);
           else if (i.state === "open" && i.mode === "testnet") {
-            const s = await this.venue!.snapshot(
-              i.plan,
-              this.account(i.owner, i.accountId),
-            );
-            if (this.now() - s.observedAt > 5000)
-              throw new Error("Stale monitoring observation.");
-            if (
-              !new Decimal(s.position).abs().eq(i.decision.quantity) ||
-              new Decimal(s.position).gt(0) !== (i.plan.direction === "long")
-            )
+            const s = await this.position(i, true);
+            if (!this.matchesPosition(i, s.position))
               throw new Error(
-                "Position changed outside Pact. Manual review required.",
+                "Position changed outside Pact. Inspect the account in dreamDEX before monitoring can resume.",
               );
             const mark = new Decimal(s.mark),
               stop = new Decimal(i.plan.stop),
@@ -649,13 +794,7 @@ export class PactService {
         } catch (error) {
           i.error = (error as Error).message.slice(0, 200);
           if (i.state === "open") {
-            i.state = "attention";
-            i.protection = "degraded";
-            this.event(
-              i,
-              "monitoring_degraded",
-              "Monitoring could not establish a safe position state. Manual review required.",
-            );
+            this.attention(i, "monitoring_degraded", i.error);
           } else if (i.state === "reserved") {
             i.state = "blocked";
             this.event(
@@ -663,7 +802,7 @@ export class PactService {
               "preflight_failed",
               "Venue preflight failed. Nothing broadcast.",
             );
-          } else this.save(i);
+          } else this.attention(i, "observation_unavailable", i.error);
         }
       }
     } finally {
