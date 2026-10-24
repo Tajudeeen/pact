@@ -10,8 +10,14 @@ import {
 import { Link, useNavigate } from "react-router";
 import { Mark, Badge, CheckLine } from "../components/ui";
 import { useApp } from "../state";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
+import { browserPreview } from "../api";
 export function Landing() {
+  const scrollToHow = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!browserPreview) return;
+    event.preventDefault();
+    document.getElementById("how")?.scrollIntoView({ behavior: "smooth" });
+  };
   const { practice } = useApp(),
     navigate = useNavigate();
   const [busy, setBusy] = useState(false),
@@ -34,7 +40,9 @@ export function Landing() {
           <Mark />
         </Link>
         <nav>
-          <a href="#how">How it works</a>
+          <a href="#how" onClick={scrollToHow}>
+            How it works
+          </a>
           <Link to="/evidence">Built to be checked</Link>
         </nav>
         <Link to="/app" className="button small outline">
@@ -69,7 +77,7 @@ export function Landing() {
                 {busy ? "Opening practice…" : "Try it without a wallet"}{" "}
                 <ArrowUpRight size={18} />
               </button>
-              <a href="#how" className="muted-link">
+              <a href="#how" onClick={scrollToHow} className="muted-link">
                 See how it works <ArrowRight size={16} />
               </a>
             </div>

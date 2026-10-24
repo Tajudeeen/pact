@@ -8,7 +8,7 @@ import {
   Check,
   ShieldCheck,
 } from "lucide-react";
-import { api, short, usd } from "../api";
+import { api, browserPreview, short, usd } from "../api";
 import { useApp, useLoad } from "../state";
 import {
   DEFAULT_POLICY,
@@ -255,6 +255,10 @@ export function AccountPage() {
     setBusy(true);
     setError(null);
     try {
+      if (browserPreview)
+        throw new Error(
+          "Wallet connection is disabled in this build preview. Use a practice session to explore Pact.",
+        );
       if (!window.ethereum)
         throw new Error(
           "Open Pact inside your wallet’s browser to connect. QR pairing is not configured in this version.",
@@ -329,13 +333,15 @@ export function AccountPage() {
           <button
             className="button primary"
             onClick={() => void connect()}
-            disabled={busy}
+            disabled={busy || browserPreview}
           >
-            {busy
-              ? "Waiting for wallet…"
-              : session?.mode === "testnet"
-                ? "Switch / reconnect wallet"
-                : "Connect EVM wallet"}
+            {browserPreview
+              ? "Wallet unavailable in preview"
+              : busy
+                ? "Waiting for wallet…"
+                : session?.mode === "testnet"
+                  ? "Switch / reconnect wallet"
+                  : "Connect EVM wallet"}
             <ArrowUpRight size={16} />
           </button>
           <div className="account-divider" />

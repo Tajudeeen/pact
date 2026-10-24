@@ -14,7 +14,7 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 - Automatic recovery checks and an owner-only recovery button. Invalid marks pause exits. A close requires both matched fills and a fresh flat-position read.
 - EVM wallet sign-in and a separate, explicitly configured linked-operator testnet adapter.
 - Read-only probe passed: chain ID 50383, 21 discovered markets and a valid live mark. **No actual testnet order has been placed by this build yet.** See [evidence](evidence/README.md).
-- No deployment URL or demo recording yet. The GitHub repository remains private.
+- A [private build preview](https://pact-build-preview.deeen-code.chatgpt.site) is available on ChatGPT Sites. It simulates practice in your browser. There is no live-trading deployment or demo recording yet. The GitHub repository remains private.
 
 The bounty's live-order requirement is still pending. A practice receipt or mocked-adapter test does not satisfy it.
 
@@ -74,7 +74,20 @@ Use **`pnpm run doctor`**, not pnpm's unrelated built-in `pnpm doctor` command. 
 
 The tests cover sizing bounds and grids, long/short price directions, invalid marks, stale/future data, exposure and budgets, duplicate approvals, consent expiry, cross-user isolation, policy changes, revoked plans, actual SQLite close/reopen recovery, uncertain broadcasts, persist-before-broadcast, close-specific timeouts, flat-position confirmation, and account-change/late-response consent invalidation. A rendered React recovery test calls the real API and SQLite service. Adapter tests decode the actual signed-call payload with mocked transports to check that it uses the freshly evaluated price.
 
-Browser visual QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
+Desktop browser practice QA passed through approval, simulated close, refresh persistence and receipt download. Mobile-wallet QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
+
+## Private build preview
+
+[Open Pact on ChatGPT Sites](https://pact-build-preview.deeen-code.chatgpt.site). Access is private to the owner. Start with **Try it without a wallet**. Explore the current screens, compare practice accounts, edit risk rules, publish a practice setup, approve, close and download a receipt.
+
+This uses the same React screens, setup definitions, schemas, pure risk calculations and receipt model as the Node app. The preview adapter is a browser-local simulation. It does not run the Node/SQLite executor, test server crash recovery, sign wallet messages, connect an operator, or place testnet orders. Data stays in that browser. Locally published setup links only resolve where their data exists. **Reset preview** clears that browser's practice data after confirmation.
+
+```bash
+pnpm dev:preview
+pnpm build:preview
+```
+
+Preview builds use hash navigation so refreshes work on static hosting. Standard `pnpm build` retains the server-backed app and normal URLs. `docs/PREVIEW.md` records the separate publication workflow and verification limits.
 
 ## Testnet execution
 

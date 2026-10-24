@@ -7,10 +7,15 @@ export class ApiError extends Error {
     super(message);
   }
 }
+export const browserPreview = import.meta.env.MODE === "preview";
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
+  if (browserPreview) {
+    const { previewApi } = await import("./preview/runtime");
+    return previewApi<T>(path, options);
+  }
   const response = await fetch("/api" + path, {
     method: options.method ?? "GET",
     credentials: "same-origin",

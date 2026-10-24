@@ -1,14 +1,38 @@
 {
-  "checkedAt": "2026-10-24T02:44:40.326176+00:00",
-  "status": "unavailable",
-  "attempt": "Production React bundle with the actual Hono API and controlled venue, using local Chromium via Playwright",
-  "blocker": "Playwright Chromium executable was not installed. Installing the headless browser failed because the downloaded archive was truncated or not a ZIP.",
-  "executedBrowserChecks": [],
-  "passingAlternative": "Rendered React recovery through the real API and SQLite service in tests/recovery-ui.test.tsx",
+  "checkedAt": "2026-10-24T05:59:55.537730+00:00",
+  "status": "partial",
+  "previewUrl": "https://pact-build-preview.deeen-code.chatgpt.site",
+  "browserQa": {
+    "surface": "Supported managed cloud Chrome browser",
+    "mode": "Browser-local practice preview, no blockchain or server executor",
+    "passed": [
+      "Landing and practice sign-in",
+      "Account-specific sizing",
+      "Explicit consent and order creation",
+      "Simulated fill and flat close",
+      "Hash-route refresh with saved order",
+      "JSON receipt download and inspection"
+    ],
+    "receipt": {
+      "mode": "replay",
+      "state": "closed",
+      "fills": 2,
+      "netPnl": "0",
+      "transactions": []
+    }
+  },
+  "chromiumInstallation": {
+    "status": "succeeded",
+    "version": "Google Chrome for Testing 151.0.7922.34",
+    "source": "https://storage.googleapis.com/chrome-for-testing-public/151.0.7922.34/linux64/chrome-headless-shell-linux64.zip",
+    "bytes": 120231126,
+    "zipIntegrity": "passed",
+    "executableVersionCheck": "passed",
+    "defaultCdnFailure": "Playwright CDN returned HTML instead of a ZIP."
+  },
   "remaining": [
-    "Visual desktop and mobile browser QA",
-    "Mobile wallet approval",
+    "Mobile visual and wallet QA",
     "Funded testnet entry and exit",
-    "Deployed-origin verification"
+    "Browser verification of server-backed recovery"
   ]
 }

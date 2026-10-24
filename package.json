@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "doctor": "node --import tsx --env-file-if-exists=.env scripts/doctor.ts",
-    "format": "prettier --write src server tests scripts docs evidence README.md SECURITY.md"
+    "format": "prettier --write src server tests scripts docs evidence README.md SECURITY.md",
+    "dev:preview": "vite --host 0.0.0.0 --mode preview",
+    "build:preview": "tsc --noEmit && vite build --mode preview"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

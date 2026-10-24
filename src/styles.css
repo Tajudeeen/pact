@@ -2681,3 +2681,50 @@ td {
     font-size: 12px;
   }
 }
+
+.preview-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: #e7eddb;
+  border-bottom: 1px solid #cad5b9;
+  color: #263f30;
+  font-size: 12px;
+  line-height: 24px;
+  text-align: center;
+}
+body.preview-mode {
+  padding-top: 41px;
+}
+.preview-mode .sidebar {
+  top: 41px;
+}
+.preview-banner button {
+  margin-left: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .preview-banner {
+    min-height: 60px;
+    flex-wrap: wrap;
+    line-height: 18px;
+    gap: 2px 8px;
+  }
+  .preview-banner button {
+    margin-left: 0;
+  }
+  body.preview-mode {
+    padding-top: 61px;
+  }
+}
