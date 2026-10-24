@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-23T23:58:04.763Z",
+  "sdk": "0.32.1",
+  "network": "Somnia Tokyo testnet",
+  "chainId": 50383,
+  "readOnly": true,
+  "checks": [
+    {
+      "name": "RPC chain",
+      "ok": true,
+      "detail": "50383"
+    },
+    {
+      "name": "SDK market discovery",
+      "ok": true,
+      "detail": "21 perp markets"
+    },
+    {
+      "name": "Live mark",
+      "ok": true,
+      "detail": "Market ZRO, mark valid: true"
+    }
+  ],
+  "ordersPlaced": 0,
+  "note": "Connectivity evidence only. Does not establish trade execution."
+}
