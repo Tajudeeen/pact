@@ -15,7 +15,7 @@ Evidence is separated by what it actually establishes. No live order hashes, fun
 
 The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
 
-Local checks: **169 tests across twenty-one files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+Local checks: **170 tests across twenty-one files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
 
 ## Browser preview verification
 
@@ -61,8 +61,12 @@ The deployed revision completed late-entry refusal, sizing, expiry refusal, alar
 
 ## Tokyo implementation revision
 
-The current 169-test suite across twenty-one files passes. Added coverage exercises resumable canonical bank-log accounting, fees/rebates/signed funding, complete entry-to-flat evidence, first-page retry backoff, rejected removed/duplicate/outside activity, independently rebuilt receipt totals, USDso daily-budget recovery, fixed close-day accounting, exact close ticks/depth, published system-wiring identity, Tokyo wallet switching/adding and account/network-change refusal. The rendered order reaches authenticated cost verification through the API and SQLite without preparing another action.
+The current 170-test suite across twenty-one files passes. Added coverage exercises resumable canonical bank-log accounting, fees/rebates/signed funding, complete entry-to-flat evidence, first-page retry backoff, rejected removed/duplicate/outside activity, independently rebuilt receipt totals, USDso daily-budget recovery, fixed close-day accounting, exact close ticks/depth, published system-wiring identity, Tokyo wallet switching/adding and account/network-change refusal. The rendered order reaches authenticated cost verification through the API and SQLite without preparing another action.
 
 `pnpm typecheck`, `pnpm check:cloudflare` and `pnpm build:cloudflare` pass. Tokyo release checks pass; mainnet refuses as designed. These are controlled tests and compilation, with no actual filled order or mobile wallet qualification. The public-address CLI returned unavailable with the SDK genesis-check error from this local host. That is not a ready account report.
 
 The ledger reports a USDso trading result after complete coverage. Native STT gas is separate. It does not invent a conversion rate or claim historical consent. The live owner still needs to sign in, link the unchanged dedicated operator, fund eligible test margin and gas, approve an appropriate setup, then capture actual entry/close and accounting proof.
+
+The deployed Tokyo revision passed late-entry refusal, standard sizing and approval, background simulated fill, close, reload persistence and receipt download. The original operator identity remained unchanged. [Revision evidence](tokyo-implementation.json) and [practice screenshot](tokyo-practice-20261024.jpg). All browser trades were practice; actual chain orders remain zero.
+
+The final read-only probe at `2026-10-24T19:02:54.444Z` also passed the bank-log RPC path for block `32164755` (zero logs in that block), along with published system wiring, pool registration/code, chain 50383, 21 markets and a valid mark. This proves read access, not attributed live trade costs.

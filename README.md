@@ -121,7 +121,7 @@ PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:c
 
 The default Wrangler environment has trading disabled and uses `http://localhost:8788`. The `production` environment sets the deployed origin and owner `0x541291139b59570D1CD5D0E64df217b3F6efd7c8`. A separate operator key is generated inside private durable storage, survives restarts, and is never exposed through an API. Copy its public address from **Account**. The owner must link it in dreamDEX and fund its STT gas. Neither a deployment nor a successful network probe places an order.
 
-Read [the Cloudflare runbook](docs/CLOUDFLARE.md) for deployment, alarms, key lifecycle, verification and limitations. `GET /api/network` checks chain discovery, published bank/collateral/factory/engine/fund wiring, pool registration, deployed pool code and a mark without signing or trading.
+Read [the Cloudflare runbook](docs/CLOUDFLARE.md) for deployment, alarms, key lifecycle, verification and limitations. `GET /api/network` checks chain discovery, published bank/collateral/factory/engine/fund wiring, pool registration, deployed pool code, a bounded bank-log read and a mark without signing or trading.
 
 The wallet flow switches to Tokyo chain 50383 before requesting a login signature, adds the published chain when the wallet reports it missing, and refuses account/network changes during sign-in.
 

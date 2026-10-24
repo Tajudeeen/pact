@@ -39,7 +39,7 @@ PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:c
 
 This command creates isolated practice sessions and simulated orders, tests duplicate approval, cross-session access, late-entry refusal and lost-response reconciliation, then closes the practice positions. It never signs or submits a real order. It requires the seeded practice setup to remain valid. Once it expires, publish a new practice setup rather than silently extending historical terms.
 
-`GET /api/health` checks storage. `GET /api/network` performs read-only network discovery, published system-wiring validation, pool registration/code and mark checks. Neither verifies gas, owner/operator permissions, margin sufficiency or a filled trade.
+`GET /api/health` checks storage. `GET /api/network` performs read-only network discovery, published system-wiring validation, pool registration/code, a bounded bank-log read and mark checks. Neither verifies gas, owner/operator permissions, margin sufficiency or a filled trade.
 
 ## Alarms and recovery
 

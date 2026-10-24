@@ -1,0 +1,64 @@
+{
+  "checkedOn": "2026-10-24",
+  "network": "Somnia Tokyo testnet",
+  "chainId": 50383,
+  "softwareChecks": {
+    "tests": 170,
+    "testFiles": 21,
+    "suite": "passed",
+    "typecheck": "passed",
+    "cloudflareTypes": "passed",
+    "cloudflareBundle": "passed",
+    "previewBuild": "passed",
+    "tokyoRelease": "passed",
+    "mainnetRelease": "expected refusal"
+  },
+  "deployedPractice": {
+    "url": "https://pact-testnet.tajudeenowoeteniyan.workers.dev",
+    "order": "58ae5b39-684e-40c5-b392-ee992c62ce23",
+    "mode": "replay",
+    "lateEntry": "OUTSIDE_ENTRY, no approval",
+    "standard": "one approval, alarm-driven simulated fill, closed",
+    "reload": "closed state persisted",
+    "receiptDownload": true,
+    "realTransactions": 0,
+    "screenshot": "tokyo-practice-20261024.jpg"
+  },
+  "deployedReadOnly": {
+    "checkedAt": "2026-10-24T19:02:54.444Z",
+    "chainId": 50383,
+    "marketCount": 21,
+    "marketWiringVerified": true,
+    "markValid": true,
+    "operatorIdentity": "unchanged",
+    "mainnet": "blocked",
+    "bankLogReadVerified": true,
+    "bankLogBlock": "32164755",
+    "bankLogCount": 0,
+    "bankLogScope": "One confirmed-block connectivity read, not actual trade accounting evidence"
+  },
+  "cloudflareDeployment": "1f737968c67149ac96d48fc2d2147d36",
+  "privatePreview": {
+    "sourceCommit": "efd68c01353bc8a67b09f1923573aa5d2948c3a0",
+    "deployment": "appgdep_6adcff620ed88191a461f1e58bbef396",
+    "status": "succeeded",
+    "url": "https://pact-build-preview.deeen-code.chatgpt.site",
+    "scope": "browser-local practice"
+  },
+  "localReadiness": {
+    "result": "unavailable",
+    "reason": "SDK rpc getBlock genesis check failed",
+    "readOnly": true
+  },
+  "accountingScope": "USDso realized PnL minus actual fees plus rebates minus signed funding. Native STT gas separate. Controlled chain fixtures only; actual filled-order qualification pending.",
+  "remaining": [
+    "Owner wallet sign-in and linked operator permission",
+    "Eligible paper USDso margin and operator STT gas",
+    "Owner-approved actual entry/close with exported independent verification",
+    "Physical mobile-wallet qualification",
+    "Native stops/reduce-only unsupported on linked-key path; dedicated account required",
+    "Separate mainnet release gates remain blocked"
+  ],
+  "actualOrdersPlaced": 0,
+  "implementationCommit": "113ec7553d2cd7b344dded4384821fbb652b99ae"
+}

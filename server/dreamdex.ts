@@ -174,10 +174,20 @@ export class DreamDex implements Venue {
       throw new Error("Testnet network or market discovery unavailable.");
     const market = await this.market(`${markets[0].baseSymbol}-PERP`);
     const state = await this.sdk.client.getPerpState(market.poolAddress);
+    const head = await this.publicClient.getBlockNumber();
+    const bankLogBlock = head > 0n ? head - 1n : 0n;
+    const bankLogs = await this.publicClient.getLogs({
+      address: market.marginBank,
+      fromBlock: bankLogBlock,
+      toBlock: bankLogBlock,
+    });
     return {
       chainId,
       marketCount: markets.length,
       marketWiringVerified: true,
+      bankLogReadVerified: true,
+      bankLogBlock: bankLogBlock.toString(),
+      bankLogCount: bankLogs.length,
       marginBank: market.marginBank,
       collateralToken: market.quoteToken,
       pool: market.poolAddress,

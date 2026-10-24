@@ -273,3 +273,37 @@ describe("published Tokyo market identity", () => {
     );
   });
 });
+
+it("probes the actual bounded bank-log path read-only alongside network wiring", async () => {
+  const getLogs = vi.fn(async () => []),
+    pool = "0x3333333333333333333333333333333333333333";
+  const venue = Object.assign(Object.create(DreamDex.prototype) as DreamDex, {
+    publicClient: {
+      getChainId: async () => 50383,
+      getBlockNumber: async () => 100n,
+      getLogs,
+    },
+    sdk: {
+      client: {
+        listPerpMarkets: async () => [{ baseSymbol: "BTC" }],
+        getPerpState: async () => ({ markPriceOk: true }),
+      },
+    },
+    market: async () => ({
+      poolAddress: pool,
+      marginBank: TOKYO_BANK,
+      quoteToken: TOKYO_COLLATERAL,
+    }),
+  });
+  expect(await venue.network()).toMatchObject({
+    bankLogReadVerified: true,
+    bankLogBlock: "99",
+    marketWiringVerified: true,
+    markValid: true,
+  });
+  expect(getLogs).toHaveBeenCalledWith({
+    address: TOKYO_BANK,
+    fromBlock: 99n,
+    toBlock: 99n,
+  });
+});
