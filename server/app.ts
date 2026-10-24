@@ -13,8 +13,10 @@ export function createApp(
   service: PactService,
   origin: string,
   operator: string | null = null,
+  allowedOwner?: string,
+  rate = new Map<string, { at: number; count: number }>(),
 ) {
-  const auth = new Auth(service.store, origin, service.now),
+  const auth = new Auth(service.store, origin, service.now, allowedOwner),
     app = new Hono<{
       Variables: { owner: string; mode: "replay" | "testnet" };
     }>();
@@ -26,7 +28,6 @@ export function createApp(
       path: "/",
       maxAge: 86400,
     });
-  const rate = new Map<string, { at: number; count: number }>();
   app.use(
     "/api/*",
     bodyLimit({
@@ -69,6 +70,16 @@ export function createApp(
         429,
       );
     if (session) {
+      if (
+        session.mode === "testnet" &&
+        allowedOwner &&
+        session.owner.toLowerCase() !== allowedOwner.toLowerCase()
+      )
+        throw new Fault(
+          "WALLET_NOT_ALLOWED",
+          "This deployment is configured for a different owner wallet.",
+          403,
+        );
       c.set("owner", session.owner);
       c.set("mode", session.mode);
     } else if (
@@ -80,6 +91,7 @@ export function createApp(
         "/api/auth/challenge",
         "/api/auth/verify",
         "/api/health",
+        "/api/network",
       ].includes(c.req.path) &&
       !/^\/api\/plans\/[^/]+$/.test(c.req.path)
     )
@@ -109,10 +121,37 @@ export function createApp(
       chainId: 50383,
       testnetEnabled: service.liveEnabled,
       operator,
+      allowedOwner: allowedOwner ?? null,
       protection: "monitored",
       heartbeatAt: h ? Number(h.value) : null,
       liveMaxNotional: "25",
     });
+  });
+  app.get("/api/network", async (c) => {
+    if (!service.venue?.network)
+      throw new Fault(
+        "TESTNET_DISABLED",
+        "Testnet reads are not configured.",
+        503,
+      );
+    let timer: ReturnType<typeof setTimeout>;
+    try {
+      const status = await Promise.race([
+        service.venue.network(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Fault("NETWORK_TIMEOUT", "Testnet read timed out.", 503),
+              ),
+            12000,
+          );
+        }),
+      ]);
+      return c.json({ ...status, readOnly: true });
+    } finally {
+      clearTimeout(timer!);
+    }
   });
   app.get("/api/session", (c) =>
     c.json({ session: auth.read(getCookie(c, "pact_session")) ?? null }),

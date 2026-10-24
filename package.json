@@ -18,7 +18,12 @@
     "doctor": "node --import tsx --env-file-if-exists=.env scripts/doctor.ts",
     "format": "prettier --write src server tests scripts docs evidence README.md SECURITY.md",
     "dev:preview": "vite --host 0.0.0.0 --mode preview",
-    "build:preview": "tsc --noEmit && vite build --mode preview"
+    "build:preview": "tsc --noEmit && vite build --mode preview",
+    "build:cloudflare": "pnpm build && node scripts/cloudflare-assets.mjs && wrangler deploy --dry-run --minify --outdir .data/cloudflare-build",
+    "dev:cloudflare": "wrangler dev --port 8788",
+    "smoke:cloudflare": "node scripts/cloudflare-smoke.mjs",
+    "types:cloudflare": "wrangler types cloudflare/env.d.ts --strict-vars=false --include-runtime=false",
+    "check:cloudflare": "tsc --noEmit -p cloudflare/tsconfig.json"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -35,6 +40,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^24.19.2",
@@ -47,6 +53,7 @@
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.152.0"
   }
 }

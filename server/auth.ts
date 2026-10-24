@@ -1,14 +1,15 @@
 import { randomBytes, createHash } from "node:crypto";
 import { createSiweMessage } from "viem/siwe";
 import { verifyMessage, getAddress, type Address, type Hex } from "viem";
-import type { Store } from "./store";
+import type { RecordStore } from "./records";
 import { Fault } from "./service";
 const hash = (x: string) => createHash("sha256").update(x).digest("hex");
 export class Auth {
   constructor(
-    readonly store: Store,
+    readonly store: RecordStore,
     readonly origin: string,
     readonly now = () => Date.now(),
+    readonly allowedOwner?: string,
   ) {}
   session(owner: string, mode: "replay" | "testnet") {
     const token = randomBytes(32).toString("hex");
@@ -30,6 +31,7 @@ export class Auth {
       .run(hash(token));
   }
   challenge(address: string) {
+    this.checkOwner(address);
     const owner = getAddress(address),
       id = randomBytes(16).toString("hex");
     const message = createSiweMessage({
@@ -59,6 +61,7 @@ export class Auth {
         "Signing request expired. Start again.",
         401,
       );
+    this.checkOwner(row.address);
     const valid = await verifyMessage({
       address: row.address as Address,
       message: row.message,
@@ -72,5 +75,16 @@ export class Auth {
     if (!removed.changes)
       throw new Fault("AUTH_USED", "Signing request already used.", 401);
     return { owner: row.address, token: this.session(row.address, "testnet") };
+  }
+  private checkOwner(address: string) {
+    if (
+      this.allowedOwner &&
+      address.toLowerCase() !== this.allowedOwner.toLowerCase()
+    )
+      throw new Fault(
+        "WALLET_NOT_ALLOWED",
+        "Use the owner wallet configured for this deployment.",
+        403,
+      );
   }
 }

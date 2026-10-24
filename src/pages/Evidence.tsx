@@ -6,7 +6,7 @@ import {
   FileCheck2,
   TriangleAlert,
 } from "lucide-react";
-import { Badge, Mark } from "../components/ui";
+import { Badge, Mark, Footer } from "../components/ui";
 export function Evidence() {
   return (
     <div className="evidence-page">
@@ -111,8 +111,9 @@ export function Evidence() {
               attributed to live receipts. Net testnet PnL stays incomplete.
             </li>
             <li>
-              This version runs as a single Node process with a persistent
-              SQLite volume. It is not configured for multiple replicas.
+              Cloudflare runs one persistent SQLite Durable Object per operator
+              lane, with alarms for recovery and monitoring. Alarm timing and
+              RPC availability can delay exits.
             </li>
             <li>
               Wallet sign-in currently supports EOA personal signatures. QR
@@ -133,10 +134,7 @@ export function Evidence() {
           </p>
         </section>
       </main>
-      <footer className="site-footer">
-        <Mark />
-        <span>One setup. Your terms.</span>
-      </footer>
+      <Footer />
     </div>
   );
 }

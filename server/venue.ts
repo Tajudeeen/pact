@@ -27,6 +27,12 @@ export type Observation = {
   detail: string;
 };
 export interface Venue {
+  network?(): Promise<{
+    chainId: number;
+    marketCount: number;
+    markValid: boolean;
+    checkedAt: string;
+  }>;
   snapshot(plan: Plan, account: Account): Promise<MarketSnapshot>;
   position(plan: Plan, account: Account): Promise<PositionObservation>;
   prepare(intent: Intent, role: "entry" | "close"): Promise<PreparedAction>;

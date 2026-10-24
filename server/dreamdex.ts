@@ -45,13 +45,13 @@ export class DreamDex implements Venue {
   readonly publicClient;
   readonly key;
   readonly wallet;
-  constructor(privateKey?: Hex) {
+  constructor(privateKey?: Hex, socketConstructor = rpcSocketConstructor()) {
     this.sdk = new SomniaMarkets({
       chain: hidekiTestnet,
       wsRpcUrl: process.env.PACT_WS_URL ?? WS,
       indexerUrl: process.env.PACT_INDEXER_URL ?? INDEXER,
       addresses: SOMNIA_HIDEKI_TESTNET_ADDRESSES,
-      rpcWebSocketConstructor: rpcSocketConstructor(),
+      rpcWebSocketConstructor: socketConstructor,
     });
     this.publicClient = createPublicClient({
       chain: hidekiTestnet,
@@ -77,6 +77,21 @@ export class DreamDex implements Venue {
     const m = rows.find((m) => `${m.baseSymbol}-PERP` === symbol);
     if (!m) throw new Error("Requested perp market was not discovered.");
     return m;
+  }
+  async network() {
+    const [chainId, markets] = await Promise.all([
+      this.publicClient.getChainId(),
+      this.sdk.client.listPerpMarkets(),
+    ]);
+    if (chainId !== CHAIN_ID || !markets.length)
+      throw new Error("Testnet network or market discovery unavailable.");
+    const state = await this.sdk.client.getPerpState(markets[0].poolAddress);
+    return {
+      chainId,
+      marketCount: markets.length,
+      markValid: state.markPriceOk,
+      checkedAt: new Date().toISOString(),
+    };
   }
   async snapshot(plan: Plan, account: Account): Promise<MarketSnapshot> {
     const m = await this.market(plan.market),

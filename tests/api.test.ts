@@ -6,6 +6,59 @@ import { createApp } from "../server/app";
 import { Auth } from "../server/auth";
 const origin = "http://localhost:5173";
 describe("API security and public flow", () => {
+  it("restricts testnet sign-in to the configured wallet while allowing isolated practice", async () => {
+    const db = new Store();
+    const allowed = privateKeyToAccount(
+      ("0x" + "11".repeat(32)) as `0x${string}`,
+    );
+    const denied = privateKeyToAccount(
+      ("0x" + "22".repeat(32)) as `0x${string}`,
+    );
+    const app = createApp(new PactService(db), origin, null, allowed.address);
+    const headers = { origin, "Content-Type": "application/json" };
+    const challenge = await app.request("/api/auth/challenge", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ address: denied.address }),
+    });
+    expect(challenge.status).toBe(403);
+    expect((await challenge.json()).code).toBe("WALLET_NOT_ALLOWED");
+    const accepted = await app.request("/api/auth/challenge", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ address: allowed.address }),
+    });
+    const c = await accepted.json();
+    const signed = await app.request("/api/auth/verify", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        id: c.id,
+        signature: await allowed.signMessage({ message: c.message }),
+      }),
+    });
+    expect(signed.status).toBe(200);
+    expect(
+      (await app.request("/api/auth/practice", { method: "POST", headers }))
+        .status,
+    ).toBe(200);
+    db.close();
+  });
+  it("does not let an older challenge bypass a newly configured owner restriction", async () => {
+    const db = new Store();
+    const denied = privateKeyToAccount(
+      ("0x" + "22".repeat(32)) as `0x${string}`,
+    );
+    const challenge = new Auth(db, origin).challenge(denied.address);
+    const restricted = new Auth(db, origin, undefined, "0x" + "11".repeat(20));
+    await expect(
+      restricted.verify(
+        challenge.id,
+        await denied.signMessage({ message: challenge.message }),
+      ),
+    ).rejects.toMatchObject({ code: "WALLET_NOT_ALLOWED" });
+    db.close();
+  });
   it("requires same-origin writes and keeps private account reads authenticated", async () => {
     const db = new Store(),
       app = createApp(new PactService(db), origin);

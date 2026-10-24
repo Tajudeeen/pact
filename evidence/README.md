@@ -15,7 +15,7 @@ Evidence is separated by what it actually establishes. No live order hashes, fun
 
 The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
 
-Local checks: **66 tests across eight files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+Local checks: **68 tests across eight files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
 
 ## Browser preview verification
 
@@ -30,3 +30,15 @@ The local suite reproduces the three review findings with controlled inputs: an 
 After funded execution, add sanitized receipts and transaction links identifying network, pool, owner/operator, side, approval, fill quantity and close result. Redact any private transport or credential data. Keep the full signed action body private in `.data`.
 
 Tests are behavioral evidence within their inputs, not proof of production reliability, adoption or profitable trading.
+
+## Cloudflare acceptance, 24 October 2026
+
+Deployment: https://pact-testnet.tajudeenowoeteniyan.workers.dev. Initial provider deployment ID `e1ef91e9ac8146ce94ba28b2597f837e`, SQLite migration `v1`, native WebSocket SDK constructor.
+
+- Local workerd: complete HTTP practice flow passed using real SQLite Durable Objects and alarms. A full dev-worker stop/start preserved the opaque session and its five accounts.
+- Deployed Worker: practice approval, alarm-driven simulated fill, close and receipt passed. Repeated approval returned the same intent. Cross-session access and late entry were refused. The lost-response scenario reconciled and closed. No hash was fabricated.
+- Deployed read-only probe at `2026-10-24T07:14:08.275Z`: chain 50383, 21 markets, valid mark. This checks network connectivity, not trading permissions, margin or actual execution.
+- Owner allowlist regression tests reject a different wallet and reject an older challenge after an owner restriction is applied.
+- No real testnet order was placed. Owner linking, gas/margin funding, matching entry/close fills and wallet/mobile signing remain pending.
+
+The Playwright CDN retry still returned invalid ZIP content. The previously downloaded official Chrome-for-Testing Headless Shell launches and reports version 151.0.7922.34. Deployment UI verification uses the managed cloud browser. Local browser installation does not establish wallet compatibility.

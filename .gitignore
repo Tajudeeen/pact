@@ -9,3 +9,8 @@ playwright-report/
 test-results/
 *.log
 *.sqlite*
+
+.wrangler/
+cloudflare/assets.generated.json
+.dev.vars
+.dev.vars.*

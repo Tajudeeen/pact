@@ -6,6 +6,8 @@ Use Node 24.13+, a writable persistent SQLite volume, a correct public origin an
 
 The SDK is pinned to `@somnia-chain/markets-sdk@0.32.1`. It uses WebSocket chain reads. A host that only permits ordinary HTTP may discover markets but fail at `getPerpState` with a genesis-check error. The optional constructor honors a host's HTTPS proxy configuration and safely handles connection retirement. The latest recorded probe passes all three stages using that constructor in this host. No HTTP-only read fallback is claimed.
 
+For the deployed Cloudflare runtime, follow [CLOUDFLARE.md](CLOUDFLARE.md). Its operator is generated privately in durable storage, so no operator key needs to be supplied in chat or the browser. The steps below describe the Node alternative unless stated otherwise.
+
 ## Account setup
 
 - Wallet A is a dedicated EOA owner, funded with test USDso in its perps margin.

@@ -403,6 +403,14 @@ export function AccountPage() {
               </p>
             </li>
           </ol>
+          {config?.allowedOwner && (
+            <div className="operator-box">
+              <small>OWNER WALLET</small>
+              <code title={config.allowedOwner}>
+                {short(config.allowedOwner)}
+              </code>
+            </div>
+          )}
           {config?.operator ? (
             <div className="operator-box">
               <small>PACT OPERATOR</small>

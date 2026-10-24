@@ -88,7 +88,7 @@ export function OrderPage() {
                 : "Tokyo testnet"}
             </Badge>
           </div>
-          <div className="order-status panel">
+          <div className="order-status panel" data-state={i.state}>
             <div className="status-icon">
               {i.state === "closed" ? (
                 <CheckCircle2 size={28} />

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { NavLink, Link, useNavigate } from "react-router";
 import { useApp } from "../state";
-import { short } from "../api";
+import { browserPreview, short } from "../api";
 export function Mark() {
   return (
     <span className="brand-lockup">
@@ -195,10 +195,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/app/account">Account</NavLink>
         </nav>
         <main className="workspace-content">{children}</main>
-        <footer className="app-footer">
-          <span>Pact · Built for dreamDEX</span>
-          <span>Planned risk is an estimate, never a maximum loss.</span>
-        </footer>
+        <Footer workspace />
       </div>
     </div>
   );
@@ -239,5 +236,79 @@ export function CheckLine({ children }: { children: ReactNode }) {
       <Check size={15} />
       {children}
     </span>
+  );
+}
+
+export function Footer({ workspace = false }: { workspace?: boolean }) {
+  const { config } = useApp();
+  return (
+    <footer
+      className={"pact-footer" + (workspace ? " pact-footer-workspace" : "")}
+    >
+      <div className="footer-top">
+        <div className="footer-identity">
+          <Link to="/" aria-label="Pact home">
+            <Mark />
+          </Link>
+          <p>
+            A shared setup.
+            <br />A decision on your terms.
+          </p>
+        </div>
+        <nav aria-label="Pact footer">
+          <h2>Explore Pact</h2>
+          <Link to="/app">Setups</Link>
+          <Link to="/app/rules">Risk rules</Link>
+          <Link to="/app/positions">Orders & receipts</Link>
+          <Link to="/evidence">Evidence & limits</Link>
+        </nav>
+        <nav aria-label="dreamDEX resources">
+          <h2>Built on dreamDEX</h2>
+          <a
+            href="https://app.testnet.dreamdex.io"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open testnet <ArrowUpRight size={12} />
+          </a>
+          <a
+            href="https://app.testnet.dreamdex.io/docs/developers/perps-testnet"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Developer docs <ArrowUpRight size={12} />
+          </a>
+          <a
+            href="https://github.com/Tajudeeen/pact"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source · private <ArrowUpRight size={12} />
+          </a>
+        </nav>
+        <div className="footer-network">
+          <span className="footer-network-label">
+            <i /> SOMNIA TOKYO
+          </span>
+          <strong>Chain 50383</strong>
+          <p>
+            {browserPreview
+              ? "Practice preview. No live orders."
+              : config?.testnetEnabled
+                ? "Testnet configured. Orders require approval."
+                : "Testnet setup pending. Practice is available."}
+          </p>
+          <Link to="/app/account">
+            Account setup <ArrowUpRight size={12} />
+          </Link>
+        </div>
+      </div>
+      <div className="footer-bottom">
+        <span>
+          © {new Date().getFullYear()} Pact · Independent builder project
+        </span>
+        <span>Planned risk is an estimate, never a maximum loss.</span>
+      </div>
+    </footer>
   );
 }

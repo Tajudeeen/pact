@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pact-testnet",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "PACT_LANE", "class_name": "PactLane" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PactLane"] }],
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": {
+    "PACT_ORIGIN": "http://localhost:8788",
+    "PACT_TESTNET_TRADING": "false",
+    "PACT_TESTNET_OWNER": "",
+  },
+  "env": {
+    "production": {
+      "name": "pact-testnet",
+      "durable_objects": {
+        "bindings": [{ "name": "PACT_LANE", "class_name": "PactLane" }],
+      },
+      "vars": {
+        "PACT_ORIGIN": "https://pact-testnet.tajudeenowoeteniyan.workers.dev",
+        "PACT_TESTNET_TRADING": "true",
+        "PACT_TESTNET_OWNER": "0x541291139b59570D1CD5D0E64df217b3F6efd7c8",
+      },
+    },
+  },
+}

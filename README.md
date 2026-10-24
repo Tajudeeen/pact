@@ -14,7 +14,8 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 - Automatic recovery checks and an owner-only recovery button. Invalid marks pause exits. A close requires both matched fills and a fresh flat-position read.
 - EVM wallet sign-in and a separate, explicitly configured linked-operator testnet adapter.
 - Read-only probe passed: chain ID 50383, 21 discovered markets and a valid live mark. **No actual testnet order has been placed by this build yet.** See [evidence](evidence/README.md).
-- A [private build preview](https://pact-build-preview.deeen-code.chatgpt.site) is available on ChatGPT Sites. It simulates practice in your browser. There is no live-trading deployment or demo recording yet. The GitHub repository remains private.
+- A [Cloudflare deployment](https://pact-testnet.tajudeenowoeteniyan.workers.dev) runs the server-backed app with SQLite Durable Objects and alarms. Testnet sign-in is restricted to the configured owner wallet.
+- A [private build preview](https://pact-build-preview.deeen-code.chatgpt.site) is available on ChatGPT Sites. It simulates practice in your browser. The private preview remains browser-local practice. A demo recording and funded testnet lifecycle are still pending. The GitHub repository remains private.
 
 The bounty's live-order requirement is still pending. A practice receipt or mocked-adapter test does not satisfy it.
 
@@ -93,6 +94,24 @@ pnpm build:preview
 
 Preview builds use hash navigation so refreshes work on static hosting. Standard `pnpm build` retains the server-backed app and normal URLs. `docs/PREVIEW.md` records the separate publication workflow and verification limits.
 
+## Cloudflare deployment
+
+[Open the server-backed app](https://pact-testnet.tajudeenowoeteniyan.workers.dev). Cloudflare serves the frontend and API, while one SQLite Durable Object coordinates the configured operator's nonce, approvals, signed actions and monitoring. Alarms advance pending work after the browser closes. The existing Node deployment remains available for local development.
+
+```bash
+pnpm build:cloudflare
+pnpm check:cloudflare
+pnpm dev:cloudflare
+# Authenticated Cloudflare CLI, deploy the configured testnet environment:
+pnpm exec wrangler deploy --env production --minify
+# Exercise the deployed practice flow, without placing real orders:
+PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:cloudflare
+```
+
+The default Wrangler environment has trading disabled and uses `http://localhost:8788`. The `production` environment sets the deployed origin and owner `0x541291139b59570D1CD5D0E64df217b3F6efd7c8`. A separate operator key is generated inside private durable storage, survives restarts, and is never exposed through an API. Copy its public address from **Account**. The owner must link it in dreamDEX and fund its STT gas. Neither a deployment nor a successful network probe places an order.
+
+Read [the Cloudflare runbook](docs/CLOUDFLARE.md) for deployment, alarms, key lifecycle, verification and limitations. `GET /api/network` checks chain discovery and a mark without signing or trading.
+
 ## Testnet execution
 
 Read [TESTNET.md](docs/TESTNET.md) before enabling. Start with a dedicated EOA account and a separate operator key, both used only for this testnet exercise. The operator cannot be the account owner's key.
@@ -118,7 +137,7 @@ The adapter uses official SDK discovery and raw-unit chain reads. Signed operato
 - Testnet receipt net PnL stays incomplete until actual funding settlements are attributed. Gas is not silently converted into USDso.
 - Wallet sign-in supports EOA `personal_sign` only. Smart-account sign-in, WalletConnect QR pairing, Telegram login and AI drafting are not implemented.
 - Published setups are immutable version-1 records. Withdraw and publish a new setup for corrections. In-place revisions are not implemented.
-- Deploy as **one Node process with one persistent SQLite volume**. Multiple replicas, multiple operator processes and production load are not qualified.
+- Cloudflare uses one persistent Durable Object per operator lane. The Node alternative uses one process with one persistent SQLite volume. Never reuse an operator in another lane or process. Production load and real testnet fills remain unqualified.
 
 Full details: [architecture](docs/ARCHITECTURE.md), [failure behavior](docs/FAILURES.md), [security](SECURITY.md), [judge path](docs/JUDGE_GUIDE.md), [bounty checklist](docs/SUBMISSION.md), and [build evidence](evidence/README.md).
 

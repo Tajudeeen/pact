@@ -10,7 +10,7 @@ import {
 } from "../src/core/types";
 import { evaluate, insideApproval } from "../src/core/risk";
 import { receiptOf } from "../src/core/receipt";
-import { Store } from "./store";
+import type { RecordStore } from "./records";
 import { digest, seededPlans } from "./plans";
 import { replaySnapshot } from "./replay";
 import type { PreparedAction, Venue } from "./venue";
@@ -37,7 +37,7 @@ const terminal = new Set(["blocked", "rejected", "closed"]);
 export class PactService {
   private running = false;
   constructor(
-    readonly store: Store,
+    readonly store: RecordStore,
     readonly venue: Venue | null = null,
     readonly liveEnabled = false,
     readonly now = () => Date.now(),

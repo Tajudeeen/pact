@@ -11,6 +11,7 @@ interface Config {
   chainId: number;
   testnetEnabled: boolean;
   operator: string | null;
+  allowedOwner?: string | null;
   protection: string;
   heartbeatAt: number | null;
   liveMaxNotional: string;

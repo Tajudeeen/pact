@@ -1,3 +1,4 @@
+import { GateMotion } from "../components/GateMotion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -8,7 +9,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { Mark, Badge, CheckLine } from "../components/ui";
+import { Mark, Badge, CheckLine, Footer } from "../components/ui";
 import { useApp } from "../state";
 import { useState, type MouseEvent } from "react";
 import { browserPreview } from "../api";
@@ -147,13 +148,7 @@ export function Landing() {
                 Check this setup for me <ArrowRight size={18} />
               </Link>
             </article>
-            <div className="late-note">
-              <div className="late-icon">↗</div>
-              <div>
-                <strong>Arrived after the entry?</strong>
-                <p>Pact tells you why the setup no longer fits.</p>
-              </div>
-            </div>
+            <GateMotion />
             <span className="visual-caption">
               Illustrative practice setup · simulated prices
             </span>
@@ -301,14 +296,7 @@ export function Landing() {
           <p>No wallet. No funds. A complete practice workflow.</p>
         </section>
       </main>
-      <footer className="site-footer">
-        <Mark />
-        <p>Shared ideas. Personal decisions.</p>
-        <Link to="/evidence">
-          Evidence & limitations <ArrowUpRight size={14} />
-        </Link>
-        <span>© {new Date().getFullYear()} Pact</span>
-      </footer>
+      <Footer />
     </div>
   );
 }
