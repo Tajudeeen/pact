@@ -12,6 +12,8 @@ import { App } from "../src/App";
 import { Provider } from "../src/state";
 import { createApp } from "../server/app";
 import { Auth } from "../server/auth";
+import { scanSettlement } from "../server/settlement";
+import { settlementFixture } from "./helpers/settlement";
 import { setup, cleanupExecution } from "./helpers/execution";
 
 afterEach(() => {
@@ -105,4 +107,72 @@ describe("owner recovery through React, API and SQLite", () => {
     expect(x.intent.state).toBe("attention");
     expect(x.prepared).toHaveLength(1);
   });
+});
+
+it("verifies costs through the rendered order, authenticated API and SQLite record", async () => {
+  const x = setup();
+  await x.open();
+  await x.service.close("owner", x.intent.id);
+  x.setPosition({ position: "0" });
+  await x.service.tick();
+  const l = settlementFixture();
+  const ledger = await scanSettlement(l.reader, l.ctx);
+  x.venue.settlement = async () => ledger;
+  const origin = "http://pact.test",
+    app = createApp(x.service, origin),
+    auth = new Auth(x.service.store, origin, x.service.now),
+    token = auth.session("owner", "testnet");
+  const fetcher = vi.fn(async (input: string, init?: RequestInit) =>
+    app.request(input, {
+      ...init,
+      headers: {
+        ...(init?.headers as Record<string, string>),
+        origin,
+        cookie: "pact_session=" + token,
+      },
+    }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  render(
+    <MemoryRouter initialEntries={["/orders/" + x.intent.id]}>
+      <Provider>
+        <App />
+      </Provider>
+    </MemoryRouter>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refresh cost accounting" }),
+  );
+  await screen.findByText("BANK EVENTS RECONCILED");
+  expect(
+    screen.queryByRole("button", { name: "Refresh cost accounting" }),
+  ).toBeNull();
+  expect(x.intent.settlement?.status).toBe("complete");
+  expect(x.sends).toBe(2);
+  const path = "/api/intents/" + x.intent.id + "/accounting";
+  expect(fetcher.mock.calls.some(([url]) => url.endsWith("/accounting"))).toBe(
+    true,
+  );
+  expect(
+    (
+      await app.request(path, {
+        method: "POST",
+        headers: {
+          origin,
+          cookie: "pact_session=" + auth.session("stranger", "testnet"),
+        },
+      })
+    ).status,
+  ).toBe(404);
+  expect(
+    (
+      await app.request(path, {
+        method: "POST",
+        headers: {
+          origin: "https://evil.test",
+          cookie: "pact_session=" + token,
+        },
+      })
+    ).status,
+  ).toBe(403);
 });

@@ -37,9 +37,11 @@ The JSON record store is intentionally small. It is not a high-volume analytics 
 
 Quantity is the smallest allowance across personal planned risk, protocol max, visible depth, margin and notional cap, floored to the lot grid. Entry price stays inside the published entry range and slippage bound. Funding reserve uses the per-market funding window normalized to hours.
 
-`planned risk = entry-to-stop loss + stop slippage reserve + funding reserve`
+`planned risk = entry-to-stop loss + stop slippage reserve + funding reserve + entry and stop-exit trading fees`
 
-Current protocol maker/taker trading fees are zero and builder fees are not requested. The risk model does not enforce a maximum realized loss. It does not yet include a separate liquidation-price buffer; execution must use small dedicated testnet accounts, and mainnet qualification is blocked on adding and testing that check. Live daily-loss accounting remains conservative: a closed testnet trade with incomplete net PnL consumes its approved planned-risk allowance rather than pretending its actual cost is known.
+The adapter reads the current effective IMF and on-chain fee rate; builder fees are not requested. The SDK liquidation projection must leave a buffer of at least 1% of the stop price beyond that stop, before both preview and signing. Planned risk does not enforce maximum realized loss. A closed testnet trade with incomplete bank-event accounting blocks further entries that UTC day. A complete ledger supplies actual USDso loss. Native STT gas is recorded separately.
+
+`server/settlement.ts` scans bounded pages of bank logs, preserving the exact covered block/hash and raw integer events. RPC errors shrink the page without advancing. Canonical entry/close anchors, expected opening size and a flat close are required. Outside position/fee activity, removed/duplicate logs and unsupported owner events prevent a complete claim. Funding payments remain signed. The read-only receipt verifier starts a fresh scan rather than trusting the exported cursor. Actual filled-order qualification is pending.
 
 ## Node deployment alternative
 
@@ -55,6 +57,6 @@ No financial order is placed during install, build, tests or the read-only docto
 
 One Durable Object is the coordination atom for a shared operator nonce. Every handler and alarm joins one serial promise queue, including network awaits. Independent operators require independent keys and objects. This is intentionally a small single-owner testnet deployment, not a globally scalable multi-user trading service.
 
-A mutation saves its next alarm before writing new work. Active intents keep alarms armed before external reads or execution. When there is no pending practice work or active testnet work, the alarm is removed and SDK connections close. Open simulated positions need no background mark checks. Cloudflare alarms are wakeups, not a hard one-second execution guarantee. Network failures or runtime delays can pause monitoring. There is no exchange-native stop.
+A mutation saves its next alarm before writing new work. Active intents keep alarms armed before external reads or execution. Closed trades with pending accounting keep a backed-off alarm until coverage is complete. When there is no pending practice work, active testnet work or pending accounting, the alarm is removed and SDK connections close. Open simulated positions need no background mark checks. Cloudflare alarms are wakeups, not a hard one-second execution guarantee. Network failures or runtime delays can pause monitoring. There is no exchange-native stop.
 
 The dedicated Cloudflare operator is generated once in private durable key-value storage. Its public address appears in configuration. Its private key has no API, export or rotation path. Preserve the namespace and owner routing identity across deploys. The only permitted testnet owner is checked before issuing or redeeming a wallet challenge and again on authenticated requests.

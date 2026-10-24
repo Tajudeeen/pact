@@ -199,7 +199,8 @@ export class PactService {
         (i) =>
           i.mode === "testnet" &&
           i.state === "closed" &&
-          i.updatedAt >= Math.floor(this.now() / 86400000) * 86400000 &&
+          (i.closedAt ?? i.updatedAt) >=
+            Math.floor(this.now() / 86400000) * 86400000 &&
           receiptOf(i).netPnl === null,
       ),
       reserved: xs
@@ -210,7 +211,8 @@ export class PactService {
         .filter(
           (i) =>
             i.state === "closed" &&
-            i.updatedAt >= Math.floor(this.now() / 86400000) * 86400000,
+            (i.closedAt ?? i.updatedAt) >=
+              Math.floor(this.now() / 86400000) * 86400000,
         )
         .reduce((a, i) => {
           const r = receiptOf(i);
@@ -266,6 +268,20 @@ export class PactService {
     const p = this.plan(planId),
       a = this.account(owner, accountId),
       policy = this.policy(owner);
+    if (p.mode === "testnet" && this.venue?.settlement) {
+      const previous = this.intents(owner)
+        .filter(
+          (i) =>
+            i.accountId === a.id &&
+            i.state === "closed" &&
+            i.mode === "testnet",
+        )
+        .sort(
+          (x, y) => (y.closedAt ?? y.updatedAt) - (x.closedAt ?? x.updatedAt),
+        )[0];
+      if (previous?.settlement?.status === "complete")
+        await this.settleIntent(previous);
+    }
     if (p.mode === "testnet")
       policy.maxNotional = Decimal.min(policy.maxNotional, "25").toFixed();
     if (p.mode === "testnet") this.requireEntriesActive(owner);
@@ -744,6 +760,7 @@ export class PactService {
       return;
     }
     i.state = role === "entry" ? "open" : "closed";
+    if (role === "close") i.closedAt = this.now();
     i.protection = role === "entry" ? "monitored" : "not_armed";
     i.error = undefined;
     i.lastMonitorAt = this.now();
@@ -769,6 +786,55 @@ export class PactService {
       return i;
     } finally {
       this.running = false;
+    }
+  }
+  async settle(owner: string, id: string) {
+    const i = this.intent(owner, id);
+    if (i.mode !== "testnet" || i.state !== "closed")
+      throw new Fault(
+        "NOT_CLOSED",
+        "Accounting requires a closed testnet position.",
+      );
+    if (!this.venue?.settlement)
+      throw new Fault(
+        "ACCOUNTING_UNAVAILABLE",
+        "The accounting reader is not configured.",
+        503,
+      );
+    if (this.running)
+      throw new Fault(
+        "EXECUTOR_BUSY",
+        "Execution is being checked. Retry shortly.",
+      );
+    this.running = true;
+    try {
+      await this.settleIntent(i);
+      return i;
+    } finally {
+      this.running = false;
+    }
+  }
+  private async settleIntent(i: Intent) {
+    if (!this.venue?.settlement) return;
+    try {
+      const wasComplete = i.settlement?.status === "complete";
+      i.settlement = await this.venue.settlement(i);
+      i.accountingRetryAt = this.now() + 2000;
+      i.error = undefined;
+      if (i.settlement.status === "complete" && !wasComplete)
+        this.event(
+          i,
+          "accounting_verified",
+          "Bank fee, rebate, funding and realized-PnL events reconciled. STT gas remains separate.",
+        );
+      else this.save(i);
+    } catch (e) {
+      if (i.settlement) i.settlement.status = "pending";
+      i.accountingRetryAt = this.now() + 15000;
+      i.error =
+        "Accounting pending: " +
+        (e as Error).message.split("\n")[0].slice(0, 180);
+      this.save(i);
     }
   }
   async recoverIntent(i: Intent) {
@@ -887,9 +953,19 @@ export class PactService {
     try {
       for (const i of this.store
         .list<Intent>("intent")
-        .filter((i) => !terminal.has(i.state))) {
+        .filter(
+          (i) =>
+            !terminal.has(i.state) ||
+            (i.mode === "testnet" &&
+              i.state === "closed" &&
+              i.settlement?.status !== "complete" &&
+              !!this.venue?.settlement),
+        )) {
         try {
-          if (i.state === "reserved") await this.execute(i);
+          if (i.state === "closed") {
+            if ((i.accountingRetryAt ?? 0) <= this.now())
+              await this.settleIntent(i);
+          } else if (i.state === "reserved") await this.execute(i);
           else if (["submitted", "unknown", "closing"].includes(i.state))
             await this.reconcile(i);
           else if (i.state === "attention" && i.mode === "testnet")

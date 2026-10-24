@@ -75,15 +75,32 @@ export class PactLane extends DurableObject<Cloudflare.Env> {
       .list<Intent>("intent")
       .some((i) =>
         i.mode === "testnet"
-          ? !terminal.has(i.state)
+          ? !terminal.has(i.state) ||
+            (i.state === "closed" && i.settlement?.status !== "complete")
           : ["reserved", "submitted", "unknown"].includes(i.state),
       );
   }
   private async schedule() {
     if (this.needsAlarm()) {
       const current = await this.ctx.storage.getAlarm();
-      const next = Date.now() + 1000;
-      if (current === null || current > next)
+      const intents = this.store.list<Intent>("intent");
+      const active = intents.some((i) =>
+        i.mode === "testnet"
+          ? !terminal.has(i.state)
+          : ["reserved", "submitted", "unknown"].includes(i.state),
+      );
+      const retry = intents
+        .filter(
+          (i) =>
+            i.mode === "testnet" &&
+            i.state === "closed" &&
+            i.settlement?.status !== "complete",
+        )
+        .map((i) => i.accountingRetryAt ?? Date.now() + 1000);
+      const next = active
+        ? Date.now() + 1000
+        : Math.max(Date.now() + 1000, Math.min(...retry));
+      if (current === null || current > next || (!active && current < next))
         await this.ctx.storage.setAlarm(next);
     } else {
       await this.ctx.storage.deleteAlarm();

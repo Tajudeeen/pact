@@ -1,6 +1,7 @@
 import { LivePrice } from "../components/LiveMarkets";
 import { TradingAccess } from "../components/TradingAccess";
 import { EntryControl } from "../components/EntryControl";
+import { requireTokyo, confirmWallet } from "../wallet";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -274,6 +275,16 @@ export function AccountPage() {
         method: "eth_requestAccounts",
       })) as string[];
       if (!addresses[0]) throw new Error("No wallet account selected.");
+      if (
+        config?.allowedOwner &&
+        addresses[0].toLowerCase() !== config.allowedOwner.toLowerCase()
+      )
+        throw new Error(
+          "Select the configured owner wallet " +
+            config.allowedOwner +
+            " before connecting.",
+        );
+      await requireTokyo(window.ethereum);
       const challenge = await api<{ id: string; message: string }>(
         "/auth/challenge",
         { method: "POST", body: { address: addresses[0] } },
@@ -287,6 +298,7 @@ export function AccountPage() {
         method: "personal_sign",
         params: [bytes, addresses[0]],
       });
+      await confirmWallet(window.ethereum, addresses[0]);
       await api("/auth/verify", {
         method: "POST",
         body: { id: challenge.id, signature },

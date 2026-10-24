@@ -120,6 +120,35 @@ export interface ChainProof {
   gasCostNativeWei: string;
   observedAt: number;
 }
+export interface SettlementEvent {
+  kind: "position" | "fee" | "rebate" | "funding";
+  block: string;
+  blockHash: string;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+  amount: string;
+  position?: string;
+}
+export interface Settlement {
+  status: "pending" | "complete";
+  marginBank: string;
+  pool: string;
+  owner: string;
+  quoteDecimals: number;
+  fromBlock: string;
+  toBlock: string;
+  coveredThrough: string | null;
+  coveredHash: string | null;
+  pageSize: number;
+  events: SettlementEvent[];
+  fees: string;
+  rebates: string;
+  fundingPaid: string;
+  realizedPnl: string;
+  checkedAt: number;
+  error?: string;
+}
 export interface Intent {
   id: string;
   owner: string;
@@ -143,6 +172,9 @@ export interface Intent {
   fills: TradeFill[];
   events: TradeEvent[];
   chainProofs?: ChainProof[];
+  settlement?: Settlement;
+  closedAt?: number;
+  accountingRetryAt?: number;
 }
 export interface TradeEvent {
   at: number;
@@ -154,6 +186,10 @@ export interface Receipt {
   owner?: string;
   plan?: Plan;
   chainProofs?: ChainProof[];
+  settlement?: Settlement;
+  rebates?: string | null;
+  netPnlScope?: "USDso trading result; STT gas separate";
+  nativeGasWei?: string | null;
   id: string;
   mode: Mode;
   chainId: number | null;

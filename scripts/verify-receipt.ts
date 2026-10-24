@@ -22,10 +22,10 @@ if (!file) {
           () =>
             reject(
               new Error(
-                "Receipt verification timed out after 30 seconds. No verification is claimed.",
+                "Receipt verification timed out after 120 seconds. No verification is claimed.",
               ),
             ),
-          30000,
+          120000,
         );
       }),
     ]);

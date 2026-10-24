@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { formatUnits } from "viem";
+import { receiptOf } from "../core/receipt";
 import type { Intent, Receipt } from "../core/types";
 import { api, usd, price, short } from "../api";
 import { useApp, useLoad } from "../state";
@@ -24,6 +25,19 @@ export function OrderPage() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const i = data.value;
+  const receipt = i ? receiptOf(i) : null;
+  const accountCosts = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/intents/" + id + "/accounting", { method: "POST", body: {} });
+      data.reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const close = async () => {
     setBusy(true);
     setError(null);
@@ -289,10 +303,101 @@ export function OrderPage() {
               </p>
             )}
             <p className="tiny muted">
-              Live trading fees and funding remain unattributed. Native gas is
-              shown separately and isn't converted into USDso PnL.
+              Native gas is shown separately and isn't converted into USDso PnL.
             </p>
           </section>
+          {i.mode === "testnet" && i.state === "closed" && (
+            <section className="panel fills-panel">
+              <div className="section-top">
+                <h2>Trade cost ledger</h2>
+                <Badge
+                  tone={i.settlement?.status === "complete" ? "green" : "amber"}
+                >
+                  {i.settlement?.status === "complete"
+                    ? "BANK EVENTS RECONCILED"
+                    : "ACCOUNTING PENDING"}
+                </Badge>
+              </div>
+              <dl className="cost-breakdown">
+                <div>
+                  <dt>Realized price PnL</dt>
+                  <dd>
+                    {receipt?.grossPnl === null
+                      ? "Pending"
+                      : usd(receipt!.grossPnl!)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Trading fees</dt>
+                  <dd>
+                    {receipt?.tradingFees === null
+                      ? "Pending"
+                      : usd(receipt!.tradingFees!)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Rebates received</dt>
+                  <dd>
+                    {receipt?.rebates == null
+                      ? "Pending"
+                      : usd(receipt.rebates)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Funding paid / received</dt>
+                  <dd>
+                    {receipt?.fundingPaid === null
+                      ? "Pending"
+                      : usd(receipt!.fundingPaid!)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Trading net · USDso</dt>
+                  <dd>
+                    {receipt?.netPnl === null
+                      ? "Pending"
+                      : usd(receipt!.netPnl!)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>STT gas · separate</dt>
+                  <dd>
+                    {receipt?.nativeGasWei
+                      ? formatUnits(BigInt(receipt.nativeGasWei), 18) + " STT"
+                      : "Pending"}
+                  </dd>
+                </div>
+              </dl>
+              <p className="tiny muted">
+                Funding above zero is paid, below zero is received. USDso
+                trading net includes fees, rebates and settled funding. STT gas
+                has no invented USDso conversion.
+              </p>
+              {i.settlement && (
+                <p className="tiny muted">
+                  Bank blocks {i.settlement.fromBlock}–{i.settlement.toBlock}.
+                  Scanned through {i.settlement.coveredThrough ?? "not started"}
+                  . {i.settlement.events.length} attributed events.{" "}
+                  {i.settlement.error}
+                </p>
+              )}
+              {i.settlement?.status !== "complete" && (
+                <>
+                  <p className="tiny muted">
+                    Pact resumes the scan automatically. Further entries remain
+                    held until the daily trading result can be verified.
+                  </p>
+                  <button
+                    className="button outline"
+                    disabled={busy}
+                    onClick={() => void accountCosts()}
+                  >
+                    {busy ? "Checking bank events…" : "Refresh cost accounting"}
+                  </button>
+                </>
+              )}
+            </section>
+          )}
           <section className="panel fills-panel">
             <h2>Observed fills</h2>
             {!i.fills.length ? (
@@ -318,7 +423,11 @@ export function OrderPage() {
                         <td>{f.quantity}</td>
                         <td>{price(f.price)}</td>
                         <td>
-                          {f.fee === null ? "Not attributed" : usd(f.fee)}
+                          {f.fee === null
+                            ? i.settlement?.status === "complete"
+                              ? "In cost ledger"
+                              : "Not attributed"
+                            : usd(f.fee)}
                         </td>
                         <td>{f.txHash ? "Confirmed tx fill" : "Simulation"}</td>
                       </tr>

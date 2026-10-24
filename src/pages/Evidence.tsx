@@ -103,15 +103,17 @@ export function Evidence() {
             It re-reads both transactions, checks their canonical blocks,
             decodes fills with the official SDK, and compares owner, market,
             quantity, side and price bounds. Practice receipts, changed setup
-            terms and mismatched fills are refused. It doesn't prove off-chain
-            consent or complete net PnL.
+            terms and mismatched fills are refused. Complete cost claims are
+            rebuilt from canonical bank events, including fees, rebates, signed
+            funding and realized USDso PnL. Native STT gas stays separate. It
+            doesn't prove off-chain consent or security.
           </p>
           <Badge tone="amber">MAINNET BLOCKED</Badge>
           <p>
             This release only executes on Tokyo testnet. Mainnet requires
-            published perps deployments, qualified closing and protection, cost
-            attribution, recovery and security checks, and a bounded pilot.
-            Deploying this frontend does not enable mainnet trading.
+            published perps deployments, qualified closing and protection, real
+            accounting evidence, recovery and security checks, and a bounded
+            pilot. Deploying this frontend does not enable mainnet trading.
           </p>
           <h2>Current limits, stated plainly.</h2>
           <ul>
@@ -129,12 +131,14 @@ export function Evidence() {
               accounts and no outside trading are required.
             </li>
             <li>
-              Trading fees and funding settlements are not yet attributed to
-              live PnL. Net testnet PnL stays incomplete.
+              Live fees, rebates, funding and realized PnL use a resumable
+              bank-event ledger. Missing coverage keeps net PnL unknown. This is
+              tested with controlled chain fixtures; real filled-order
+              qualification is pending.
             </li>
             <li>
               Actual native gas is recorded separately when transaction proof is
-              available. Trading fees and funding remain unattributed. A closed
+              available. No STT-to-USDso exchange rate is assumed. A closed
               testnet trade with incomplete costs blocks further entries for
               that account in the same UTC day.
             </li>

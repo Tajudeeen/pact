@@ -37,7 +37,16 @@ The adapter checks the simulation's explicit boolean result, including non-rever
 3. Verify decoded fill events, not only transaction success.
 4. Check monitoring status. It is not native TP/SL.
 5. Close from Pact and reconcile the close hash and fills. If outside exposure changes or the close cannot safely proceed, manage the account manually in dreamDEX and record the limitation.
-6. Export the receipt and capture the demo. Actual funding remains an incomplete component, so do not describe it as complete net PnL.
+6. Wait for **BANK EVENTS RECONCILED** on the closed order, or press **Refresh cost accounting**. The background scanner resumes exact block coverage after transient failures and shrinks a failed log page without skipping it. Unsupported activity or incomplete position evidence keeps net PnL unknown and blocks another same-day entry.
+7. Export the receipt and run `pnpm run verify:receipt ./pact-receipt.json`. It independently re-reads execution and rebuilds any complete bank ledger. Capture the actual result and demo. The USDso net trading result excludes native STT gas, which is shown separately.
+
+A public-address-only CLI is available for the same checks:
+
+```sh
+pnpm run testnet:readiness 0x541291139b59570D1CD5D0E64df217b3F6efd7c8 0x2E33B949b7a8C49b5156d666ed614F12fb798235 BTC-PERP
+```
+
+It accepts no private key and sends no transaction. It exits nonzero for blockers, unavailable reads or a timeout. Browser access checks remain authenticated to the signed-in owner. The wallet flow requests Tokyo before signing and refuses an account or network change during login. Physical mobile-wallet qualification is still pending.
 
 ## Recover an order
 
@@ -54,4 +63,4 @@ These behaviors are covered with controlled local transports and an actual SQLit
 
 ## Mainnet release gate
 
-Mainnet is intentionally blocked by chain ID 50383. Before a mainnet release: confirm published addresses/SDK compatibility, implement a liquidation-buffer check, qualify stronger close protection, settle actual funding/gas attribution, prove recovery and revocation behavior, complete browser/mobile wallet QA, and obtain authorization for funded real-money execution. The bounty's final $200 requires actual mainnet orders within 30 days of launch, not simply a configuration flag.
+Mainnet is intentionally blocked by chain ID 50383. Before a mainnet release: confirm published addresses/SDK compatibility, qualify the implemented liquidation-buffer check, strengthen close protection, qualify actual bank-event accounting and native-gas evidence, prove recovery and revocation behavior, complete browser/mobile wallet QA, and obtain authorization for funded real-money execution. The bounty's final $200 requires actual mainnet orders within 30 days of launch, not simply a configuration flag.

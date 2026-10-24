@@ -7,6 +7,7 @@ import type {
   Decision,
   EntrySafety,
   ChainProof,
+  Settlement,
 } from "../src/core/types";
 import type { TradingReadiness } from "../src/core/readiness";
 export interface PreparedAction {
@@ -32,6 +33,7 @@ export type Observation = {
   proof?: ChainProof;
 };
 export interface Venue {
+  settlement?(intent: Intent): Promise<Settlement>;
   entrySafety?(
     plan: Plan,
     account: Account,

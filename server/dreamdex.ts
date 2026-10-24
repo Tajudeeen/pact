@@ -47,10 +47,16 @@ import {
 } from "../src/core/markets";
 import { confirmedOrder, EXECUTION_CHAIN_ID } from "./chain-proof";
 import { assertExecutionNetwork } from "./release";
+import { scanSettlement } from "./settlement";
 export const CHAIN_ID = 50383;
 export const RPC = "https://api.hideki2.infra.testnet.somnia.network";
 export const WS = "wss://api.hideki2.infra.testnet.somnia.network/ws";
 export const INDEXER = "https://hideki-dev.smk.somnia.host/v1/graphql";
+export const TOKYO_BANK = "0x478769E1177C0773c43A593DCCc4Ad15F15F1394";
+export const TOKYO_COLLATERAL = "0xed7993A74dAe1e6656B704A424DcD8711aAf4F72";
+export const TOKYO_FACTORY = "0xE631fAEE547baeE07353E290f0562ea67d856560";
+export const TOKYO_LIQUIDATION = "0xA66d3C24Ad4a389d863846905D8173e1017e9F4D";
+export const TOKYO_INSURANCE = "0x50826894D47C6D4f3BeA38BFDC7Dc5c5be171b80";
 const abi = [
   ...parseAbi([
     "function placeOrderFor(address owner,bool isBid,uint64 userData,uint256 price,uint256 quantity,uint64 expireTimestampNs,uint8 orderType,uint8 selfMatchingOption,address builder,uint96 builderFeeBpsTimes1k) payable returns (bool success,uint128 orderId)",
@@ -59,6 +65,35 @@ const abi = [
   ...contractErrorsAbi,
 ];
 export class DreamDex implements Venue {
+  async settlement(intent: Intent) {
+    const entry = intent.chainProofs?.find((p) => p.role === "entry"),
+      close = intent.chainProofs?.find((p) => p.role === "close");
+    if (!entry || !close)
+      throw new Error(
+        "Both canonical transaction proofs are required for accounting.",
+      );
+    const m = await this.market(intent.plan.market);
+    if (
+      entry.pool.toLowerCase() !== m.poolAddress.toLowerCase() ||
+      close.pool.toLowerCase() !== m.poolAddress.toLowerCase()
+    )
+      throw new Error("Accounting market differs from the observed execution.");
+    return scanSettlement(
+      this.publicClient,
+      {
+        owner: intent.owner as Address,
+        pool: m.poolAddress,
+        marginBank: m.marginBank,
+        quoteDecimals: m.quoteDecimals,
+        entry,
+        close,
+        expectedPosition:
+          parseUnits(intent.decision.quantity, m.baseDecimals) *
+          (intent.plan.direction === "long" ? 1n : -1n),
+      },
+      intent.settlement,
+    );
+  }
   readonly sdk: SomniaMarkets;
   readonly publicClient;
   readonly key;
@@ -99,6 +134,35 @@ export class DreamDex implements Venue {
     const rows = await this.sdk.client.listPerpMarkets();
     const m = rows.find((m) => `${m.baseSymbol}-PERP` === symbol);
     if (!m) throw new Error("Requested perp market was not discovered.");
+    if (
+      m.marginBank.toLowerCase() !== TOKYO_BANK.toLowerCase() ||
+      m.quoteToken.toLowerCase() !== TOKYO_COLLATERAL.toLowerCase()
+    )
+      throw new Error(
+        "Discovered market does not use the published Tokyo perps bank and USDso collateral.",
+      );
+    const [config, registered, code] = await Promise.all([
+      this.sdk.client.getPerpSystemConfig(m.marginBank),
+      this.sdk.client.isPerpPoolRegistered({
+        marginBank: m.marginBank,
+        pool: m.poolAddress,
+      }),
+      this.publicClient.getBytecode({ address: m.poolAddress }),
+    ]);
+    if (
+      !registered ||
+      !code ||
+      code === "0x" ||
+      !config.fullyWired ||
+      config.collateralToken.toLowerCase() !== TOKYO_COLLATERAL.toLowerCase() ||
+      config.perpPoolFactory.toLowerCase() !== TOKYO_FACTORY.toLowerCase() ||
+      config.liquidationEngine.toLowerCase() !==
+        TOKYO_LIQUIDATION.toLowerCase() ||
+      config.insuranceFund.toLowerCase() !== TOKYO_INSURANCE.toLowerCase()
+    )
+      throw new Error(
+        "Tokyo market registration, deployed code or bank system wiring could not be verified.",
+      );
     return m;
   }
   async network() {
@@ -108,10 +172,15 @@ export class DreamDex implements Venue {
     ]);
     if (chainId !== CHAIN_ID || !markets.length)
       throw new Error("Testnet network or market discovery unavailable.");
-    const state = await this.sdk.client.getPerpState(markets[0].poolAddress);
+    const market = await this.market(`${markets[0].baseSymbol}-PERP`);
+    const state = await this.sdk.client.getPerpState(market.poolAddress);
     return {
       chainId,
       marketCount: markets.length,
+      marketWiringVerified: true,
+      marginBank: market.marginBank,
+      collateralToken: market.quoteToken,
+      pool: market.poolAddress,
       markValid: state.markPriceOk,
       checkedAt: new Date().toISOString(),
     };
@@ -165,13 +234,14 @@ export class DreamDex implements Venue {
   async readiness(
     ownerAddress: string,
     symbol: string,
+    readonlyOperator?: Address,
   ): Promise<TradingReadiness> {
     const checkedAt = Date.now();
     if ((await this.publicClient.getChainId()) !== CHAIN_ID)
       throw new Error("RPC chain is not Somnia Tokyo testnet.");
     const m = await this.market(symbol),
       owner = ownerAddress as Address;
-    const operator = this.key?.address ?? null;
+    const operator = this.key?.address ?? readonlyOperator ?? null;
     const [state, margin, position, orders, book, permissions, gas] =
       await Promise.all([
         this.sdk.client.getPerpState(m.poolAddress),
@@ -184,7 +254,7 @@ export class DreamDex implements Venue {
         this.sdk.client.getOpenOrdersOnchain([m.poolAddress], owner),
         this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 1 }),
         operator
-          ? this.operatorPermissions(owner, m.poolAddress)
+          ? this.operatorPermissions(owner, m.poolAddress, operator)
           : Promise.resolve([false, false, false]),
         operator
           ? Promise.all([
@@ -272,14 +342,18 @@ export class DreamDex implements Venue {
       checks,
     };
   }
-  private operatorPermissions(owner: Address, pool: Address) {
+  private operatorPermissions(
+    owner: Address,
+    pool: Address,
+    operator = this.key!.address,
+  ) {
     return Promise.all(
       ["0x80054449", "0xe37b444b", "0x364c2587"].map((s) =>
         this.publicClient.readContract({
           address: pool,
           abi,
           functionName: "isOperatorAuthorized",
-          args: [owner, this.key!.address, s as Hex],
+          args: [owner, operator, s as Hex],
         }),
       ),
     );
@@ -480,7 +554,7 @@ export class DreamDex implements Venue {
           account: owner,
           pool: m.poolAddress,
         }),
-        this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 1 }),
+        this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 20 }),
       ]);
       const signed = isBid ? p.size : -p.size;
       if (signed !== quantity)
@@ -490,12 +564,31 @@ export class DreamDex implements Venue {
       isBid = !isBid;
       const level = isBid ? book.asks[0] : book.bids[0];
       if (!level) throw new Error("No counterparty available for closing.");
+      if (
+        !book.asks[0] ||
+        !book.bids[0] ||
+        book.asks[0].price <= 0n ||
+        book.bids[0].price <= 0n ||
+        book.bids[0].price > book.asks[0].price
+      )
+        throw new Error("Close requires a valid, uncrossed two-sided book.");
       const slip = BigInt(intent.policy.slippageBps),
         tick = BigInt(m.tickSize);
+      if (tick <= 0n || slip < 1n || slip > 100n)
+        throw new Error("Close tick or slippage policy is invalid.");
       const raw = isBid
         ? (level.price * (10000n + slip)) / 10000n
         : (level.price * (10000n - slip)) / 10000n;
-      price = isBid ? ((raw + tick - 1n) / tick) * tick : (raw / tick) * tick;
+      price = isBid ? (raw / tick) * tick : ((raw + tick - 1n) / tick) * tick;
+      if (price <= 0n || (isBid ? price < level.price : price > level.price))
+        throw new Error("No close tick fits the slippage bound.");
+      const depth = (isBid ? book.asks : book.bids)
+        .filter((l) => (isBid ? l.price <= price : l.price >= price))
+        .reduce((n, l) => n + l.quantity, 0n);
+      if (depth < quantity)
+        throw new Error(
+          "Insufficient close depth inside the slippage bound. Nothing signed.",
+        );
     }
     const args = [
       owner,

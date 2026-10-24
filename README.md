@@ -82,7 +82,7 @@ Desktop browser practice QA passed through approval, simulated close, refresh pe
 
 Execution preflight requires the contract simulation's explicit success flag and sufficient operator balance for the prepared transaction's gas ceiling. A close signed more than five seconds after its position observation is held without broadcast. Access-check authentication, missing setup conditions, report expiry and changed-market response cancellation have regression coverage.
 
-Entry sizing now uses the current effective margin rate, reserves trading fees, and requires an SDK liquidation projection beyond the stop with a 1% stop-price buffer. Account includes a persistent new-entry pause. Confirmed receipts bind sender, pool, nonce and calldata to the recorded transaction, wait for two canonical block confirmations, and export actual native gas evidence. Live trading fees remain unattributed rather than reported as zero. Use `pnpm run verify:receipt /path/to/receipt.json` to independently re-read closed testnet execution.
+Entry sizing now uses the current effective margin rate, reserves trading fees, and requires an SDK liquidation projection beyond the stop with a 1% stop-price buffer. Account includes a persistent new-entry pause. Confirmed receipts bind sender, pool, nonce and calldata to the recorded transaction, wait for two canonical block confirmations, and export actual native gas evidence. The resumable bank-event ledger attributes actual fees, rebates, signed funding and realized USDso PnL after closing; incomplete coverage keeps net PnL unknown. Native STT gas stays separate. Use `pnpm run verify:receipt /path/to/receipt.json` to independently re-read closed testnet execution.
 
 ## Live market data
 
@@ -121,7 +121,9 @@ PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:c
 
 The default Wrangler environment has trading disabled and uses `http://localhost:8788`. The `production` environment sets the deployed origin and owner `0x541291139b59570D1CD5D0E64df217b3F6efd7c8`. A separate operator key is generated inside private durable storage, survives restarts, and is never exposed through an API. Copy its public address from **Account**. The owner must link it in dreamDEX and fund its STT gas. Neither a deployment nor a successful network probe places an order.
 
-Read [the Cloudflare runbook](docs/CLOUDFLARE.md) for deployment, alarms, key lifecycle, verification and limitations. `GET /api/network` checks chain discovery and a mark without signing or trading.
+Read [the Cloudflare runbook](docs/CLOUDFLARE.md) for deployment, alarms, key lifecycle, verification and limitations. `GET /api/network` checks chain discovery, published bank/collateral/factory/engine/fund wiring, pool registration, deployed pool code and a mark without signing or trading.
+
+The wallet flow switches to Tokyo chain 50383 before requesting a login signature, adds the published chain when the wallet reports it missing, and refuses account/network changes during sign-in.
 
 ## Testnet execution
 
@@ -145,7 +147,7 @@ The adapter uses official SDK discovery and raw-unit chain reads. Signed operato
 - Successful receipt status is separate from observed fills. A missing or unexpected fill is an attention state, not success. A close is complete only after matched close fills and a fresh flat-position read.
 - Attention states are rechecked automatically. **Check recovery** on the order page performs the same read-only reconciliation. Valid matching positions resume monitoring. This never signs a replacement or retries a reverted close. See the [recovery runbook](docs/TESTNET.md#recover-an-order).
 - A crash after persistence but before broadcast can leave a transaction unsent. Pact does not blindly retry it or sign a replacement. Operator review is required. This favors preventing duplicates over guaranteeing delivery.
-- Testnet receipt net PnL stays incomplete until actual funding settlements are attributed. Gas is not silently converted into USDso.
+- A resumable bank-event scan covers entry through close, checks canonical anchors, and attributes actual fees, rebates, signed funding and realized PnL. Net USDso results appear only after complete coverage and expected entry/flat-close position events. Native STT gas is separate; no USDso exchange rate is assumed. Unverified same-day costs block repeat entries. This is fixture-tested, with real filled-order qualification still pending.
 - Wallet sign-in supports EOA `personal_sign` only. Smart-account sign-in, WalletConnect QR pairing, Telegram login and AI drafting are not implemented.
 - Published setups are immutable version-1 records. Withdraw and publish a new setup for corrections. In-place revisions are not implemented.
 - Cloudflare uses one persistent Durable Object per operator lane. The Node alternative uses one process with one persistent SQLite volume. Never reuse an operator in another lane or process. Production load and real testnet fills remain unqualified.

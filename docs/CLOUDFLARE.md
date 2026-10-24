@@ -11,7 +11,7 @@ Initial operator public address: `0x2E33B949b7a8C49b5156d666ed614F12fb798235`. A
 The deployment generates a separate operator key once inside private durable storage. The browser receives only its public address. It never asks for the owner's private key. There is no signing-key export endpoint. Preserve the Durable Object namespace, owner routing identity and stored data. Changing the owner variable selects a different lane and key. Never do that with unresolved actions or open positions. Recoverability of exported key backups or key rotation is not implemented.
 
 1. Open **Account** in a browser with the owner wallet's injected provider.
-2. Sign the domain-bound sign-in message. Sign-in alone grants no trading permission.
+2. Accept the request to switch/add Tokyo chain 50383, then sign the domain-bound sign-in message. Sign-in alone grants no trading permission.
 3. In dreamDEX testnet, link the displayed operator to the owner's perps markets. Fund its STT gas and the owner's eligible paper USDso perps margin.
 4. Add the signed-in account, publish a small testnet setup at valid current ticks, and check the size. Server preflight verifies permission and account state.
 5. Read the bounds and monitored-exit terms before approving. The server caps each entry at 25 USDso notional. A market's minimum may exceed the permitted size, in which case no order is sent.
@@ -39,13 +39,13 @@ PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:c
 
 This command creates isolated practice sessions and simulated orders, tests duplicate approval, cross-session access, late-entry refusal and lost-response reconciliation, then closes the practice positions. It never signs or submits a real order. It requires the seeded practice setup to remain valid. Once it expires, publish a new practice setup rather than silently extending historical terms.
 
-`GET /api/health` checks storage. `GET /api/network` performs read-only network discovery and mark validation. Neither verifies gas, owner/operator permissions, margin sufficiency or a filled trade.
+`GET /api/health` checks storage. `GET /api/network` performs read-only network discovery, published system-wiring validation, pool registration/code and mark checks. Neither verifies gas, owner/operator permissions, margin sufficiency or a filled trade.
 
 ## Alarms and recovery
 
 Every mutating API request saves a wakeup before application writes. A serial queue coordinates HTTP requests and alarm callbacks, including asynchronous network operations. This keeps one operator nonce lane and avoids overlapping position management.
 
-Active work re-arms its alarm before external I/O. Durable alarms keep the executor independent of an open browser or an in-memory Node timer. Idle lanes remove their alarm and close SDK connections. The nominal interval is one second while work exists, but alarm scheduling, provider limits and RPC latency can delay it. This is monitored protection, not an exchange-native stop or maximum-loss guarantee.
+Active work re-arms its alarm before external I/O. Durable alarms keep the executor independent of an open browser or an in-memory Node timer. Closed positions with pending accounting retry after two seconds of progress or fifteen seconds after a failed scan. Failed log pages shrink without cursor advancement. Idle lanes remove their alarm and close SDK connections. The nominal interval is one second while work exists, but alarm scheduling, provider limits and RPC latency can delay it. This is monitored protection, not an exchange-native stop or maximum-loss guarantee.
 
 The shared service persists the signed transaction and hash before broadcasting. Recovery checks that original hash and position. It never blindly replaces a transaction. The operator lane stays blocked when an unresolved transaction makes another broadcast unsafe. Inspect the position directly in dreamDEX if urgent. Do not clear the database or namespace to remove a blocking state.
 

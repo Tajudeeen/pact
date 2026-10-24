@@ -18,6 +18,7 @@
     "doctor": "node --import tsx --env-file-if-exists=.env scripts/doctor.ts",
     "release:check": "node --import tsx scripts/release-check.ts",
     "verify:receipt": "node --import tsx --env-file-if-exists=.env scripts/verify-receipt.ts",
+    "testnet:readiness": "node --import tsx --env-file-if-exists=.env scripts/testnet-readiness.ts",
     "format": "prettier --write src server tests scripts docs evidence README.md SECURITY.md",
     "dev:preview": "vite --host 0.0.0.0 --mode preview",
     "build:preview": "tsc --noEmit && vite build --mode preview",
