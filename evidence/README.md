@@ -15,7 +15,7 @@ Evidence is separated by what it actually establishes. No live order hashes, fun
 
 The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
 
-Local checks: **88 tests across twelve files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+Local checks: **133 tests across eighteen files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
 
 ## Browser preview verification
 
@@ -50,3 +50,9 @@ The deployed endpoint returned actual BTC/ETH testnet marks, best bids/asks, poo
 ## Trading access and signing qualification
 
 Ten new regression cases exercise wallet-only access checks, blocked setup conditions, positive read-only access, wrong-chain refusal, RPC failure, report expiry and changed-market cancellation, failed FOK simulation, insufficient operator gas and a close signing past its position check. All 88 tests across twelve files pass. These checks use controlled transports and do not establish a real testnet order. Actual entry/close hashes and matching fills remain pending.
+
+## Execution qualification revision
+
+The current suite covers 133 cases across eighteen files. Added checks exercise current effective margin and fee-unit conversion, malformed numeric input refusal, fee-inclusive risk, long/short liquidation buffers, canonical block confirmation, exact transaction identity and signed bytes, exported-receipt tampering, the mainnet refusal, persistent entry pause through restart and the rendered API/SQLite path, and holding repeat entries when settled daily costs are unknown. All chain transports in these execution tests are controlled. No real order, independent security audit, or mainnet compatibility is claimed. See [release gates](../docs/MAINNET.md).
+
+Local Wrangler runtime QA was attempted but stopped with the host error `uv_interface_addresses returned Unknown system error 1`. This is recorded as unavailable, not a passing Worker runtime test. Type checking, Worker bundling and deployed browser checks are separate evidence.

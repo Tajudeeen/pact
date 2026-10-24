@@ -43,6 +43,7 @@ export interface MarketSnapshot {
   observedAt: number;
   marginAvailable: string;
   initialMarginRate: string;
+  takerFeeRate?: string;
   position: string;
   permitted: boolean;
   reason?: string;
@@ -59,6 +60,8 @@ export interface Decision {
   stopLoss: string;
   slippageReserve: string;
   fundingReserve: string;
+  feeReserve?: string;
+  entrySafety?: EntrySafety;
   rewardRisk: string;
   budget: string;
   limitedBy: string;
@@ -87,10 +90,35 @@ export interface TradeFill {
   role: "entry" | "close";
   quantity: string;
   price: string;
-  fee: string;
+  fee: string | null;
   at: number;
   txHash?: string;
   logIndex?: number;
+}
+export interface EntrySafety {
+  allowed: boolean;
+  reason: string;
+  projectedLiquidationPrice: string | null;
+  minimumGapBps: number;
+  asOfBlock: string;
+  observedAt: number;
+}
+export interface ChainProof {
+  role: "entry" | "close";
+  chainId: number;
+  hash: string;
+  pool: string;
+  operator: string;
+  owner: string;
+  input: string;
+  nonce: number;
+  blockNumber: string;
+  blockHash: string;
+  confirmations: number;
+  gasUsed: string;
+  effectiveGasPrice: string;
+  gasCostNativeWei: string;
+  observedAt: number;
 }
 export interface Intent {
   id: string;
@@ -114,6 +142,7 @@ export interface Intent {
   closeHash?: string;
   fills: TradeFill[];
   events: TradeEvent[];
+  chainProofs?: ChainProof[];
 }
 export interface TradeEvent {
   at: number;
@@ -121,6 +150,10 @@ export interface TradeEvent {
   detail: string;
 }
 export interface Receipt {
+  schemaVersion?: 2;
+  owner?: string;
+  plan?: Plan;
+  chainProofs?: ChainProof[];
   id: string;
   mode: Mode;
   chainId: number | null;
@@ -136,7 +169,7 @@ export interface Receipt {
   executionPlannedLoss: string | null;
   fills: TradeFill[];
   grossPnl: string | null;
-  tradingFees: string;
+  tradingFees: string | null;
   fundingPaid: string | null;
   netPnl: string | null;
   incomplete: string[];

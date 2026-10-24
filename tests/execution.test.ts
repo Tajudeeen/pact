@@ -8,6 +8,76 @@ import { setup, folders, cleanupExecution } from "./helpers/execution";
 afterEach(cleanupExecution);
 
 describe("testnet execution and recovery without network calls", () => {
+  it("holds another same-day entry when the closed trade's actual costs are incomplete", async () => {
+    const x = setup();
+    await x.open();
+    await x.service.close("owner", x.intent.id);
+    x.setPosition({ position: "0" });
+    await x.service.tick();
+    expect(x.intent.state).toBe("closed");
+    expect(x.service.exposure("owner", x.account.id).unverifiedLoss).toBe(true);
+    const preview = await x.service.preview("owner", x.plan.id, x.account.id);
+    expect(preview.decision.reason).toBe("ACCOUNTING_INCOMPLETE");
+    expect(preview.decision.quantity).toBe("0");
+    expect(x.sends).toBe(2);
+  });
+  it("requires the liquidation safety adapter and never approves a missing check", async () => {
+    const x = setup();
+    delete x.venue.entrySafety;
+    await expect(x.approve()).rejects.toThrow(
+      "Liquidation checks are not configured",
+    );
+    expect(x.prepared).toHaveLength(0);
+  });
+  it("blocks preview and fresh execution when the liquidation buffer is refused", async () => {
+    const x = setup();
+    const good = x.venue.entrySafety;
+    x.venue.entrySafety = async () => ({
+      allowed: false,
+      reason: "Liquidation crosses stop",
+      projectedLiquidationPrice: x.plan.stop,
+      minimumGapBps: 100,
+      asOfBlock: "1",
+      observedAt: 1800000000000,
+    });
+    const bad = x.venue.entrySafety;
+    const preview = await x.service.preview("owner", x.plan.id, x.account.id);
+    expect(preview.decision.reason).toBe("LIQUIDATION_BUFFER");
+    x.venue.entrySafety = good;
+    await x.approve();
+    x.venue.entrySafety = bad;
+    await x.service.tick();
+    expect(x.intent.events.at(-1)?.type).toBe("liquidation_buffer_blocked");
+    expect(x.sends).toBe(0);
+  });
+  it("persists entry pause across restart while allowing an existing position to close", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pact-pause-"));
+    folders.push(dir);
+    const x = setup(join(dir, "pact.sqlite"));
+    await x.open();
+    x.service.setEntriesPaused("owner", true);
+    x.restart();
+    expect(x.service.entryControl("owner").paused).toBe(true);
+    await expect(
+      x.service.preview("owner", x.plan.id, x.account.id),
+    ).rejects.toThrow("entries are paused");
+    await x.service.close("owner", x.intent.id);
+    expect(x.intent.state).toBe("closing");
+  });
+  it("holds a queued entry and also checks pauses arriving during signing", async () => {
+    const x = setup();
+    await x.approve();
+    const prepare = x.venue.prepare;
+    x.venue.prepare = async (i, role) => {
+      const action = await prepare(i, role);
+      x.service.setEntriesPaused("owner", true);
+      return action;
+    };
+    await x.service.tick();
+    expect(x.intent.events.at(-1)?.type).toBe("entries_paused");
+    expect(x.service.action(x.intent, "entry")).toBeUndefined();
+    expect(x.sends).toBe(0);
+  });
   it("does not persist or broadcast a close signed after its position observation expires", async () => {
     const x = setup();
     await x.open();

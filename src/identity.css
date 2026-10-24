@@ -1361,3 +1361,10 @@
 .trading-access code {
   overflow-wrap: anywhere;
 }
+.evidence-limits pre {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 16px;
+  border: 1px solid var(--line, #d8cfc1);
+}

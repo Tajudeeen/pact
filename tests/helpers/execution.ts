@@ -28,6 +28,14 @@ export function setup(path = ":memory:") {
   const db = new Store(path);
   stores.push(db);
   const venue: Venue = {
+    entrySafety: async () => ({
+      allowed: true,
+      reason: "Fixture projection",
+      projectedLiquidationPrice: "0",
+      minimumGapBps: 100,
+      asOfBlock: "1",
+      observedAt: now,
+    }),
     snapshot: async (p, a) => ({ ...replaySnapshot(p, a, now), ...quote }),
     position: async () => {
       if (positionError)

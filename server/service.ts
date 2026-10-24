@@ -62,6 +62,26 @@ export class PactService {
   policy(owner: string): Policy {
     return { ...(this.store.get<Policy>("policy", owner) ?? DEFAULT_POLICY) };
   }
+  entryControl(owner: string) {
+    return (
+      this.store.get<{ paused: boolean; updatedAt: number }>(
+        "entry-control",
+        owner,
+      ) ?? { paused: false, updatedAt: 0 }
+    );
+  }
+  setEntriesPaused(owner: string, paused: boolean) {
+    const control = { paused, updatedAt: this.now() };
+    this.store.put("entry-control", owner, owner, control);
+    return control;
+  }
+  private requireEntriesActive(owner: string) {
+    if (this.entryControl(owner).paused)
+      throw new Fault(
+        "ENTRIES_PAUSED",
+        "New testnet entries are paused. Existing positions can still close and recover.",
+      );
+  }
   setPolicy(owner: string, p: Policy) {
     if (
       new Decimal(p.risk).gt(p.totalRisk) ||
@@ -175,6 +195,13 @@ export class PactService {
       (i) => i.accountId === accountId && i.id !== except,
     );
     return {
+      unverifiedLoss: xs.some(
+        (i) =>
+          i.mode === "testnet" &&
+          i.state === "closed" &&
+          i.updatedAt >= Math.floor(this.now() / 86400000) * 86400000 &&
+          receiptOf(i).netPnl === null,
+      ),
       reserved: xs
         .filter((i) => !terminal.has(i.state))
         .reduce((a, i) => a.plus(i.decision.plannedLoss), new Decimal(0))
@@ -209,12 +236,39 @@ export class PactService {
       throw new Fault("TESTNET_DISABLED", "Testnet is not configured.");
     return this.venue.snapshot(plan, account);
   }
+  private async checkEntrySafety(
+    plan: Plan,
+    account: Account,
+    decision: Decision,
+  ) {
+    if (!this.venue?.entrySafety)
+      throw new Fault(
+        "SAFETY_UNAVAILABLE",
+        "Liquidation checks are not configured. Nothing can be approved.",
+        503,
+      );
+    const safety = await this.venue.entrySafety(plan, account, decision);
+    if (
+      !Number.isFinite(safety.observedAt) ||
+      this.now() - safety.observedAt > 5000 ||
+      safety.observedAt > this.now() + 1000 ||
+      !Number.isFinite(safety.minimumGapBps) ||
+      safety.minimumGapBps < 100 ||
+      this.now() - decision.snapshot.observedAt > 5000
+    )
+      throw new Fault(
+        "SAFETY_STALE",
+        "Liquidation check is stale or incomplete. Preview again.",
+      );
+    return safety;
+  }
   async preview(owner: string, planId: string, accountId: string) {
     const p = this.plan(planId),
       a = this.account(owner, accountId),
       policy = this.policy(owner);
     if (p.mode === "testnet")
       policy.maxNotional = Decimal.min(policy.maxNotional, "25").toFixed();
+    if (p.mode === "testnet") this.requireEntriesActive(owner);
     const snapshot = await this.snapshot(p, a);
     const result = evaluate(
       p,
@@ -223,6 +277,16 @@ export class PactService {
       this.now(),
       this.exposure(owner, a.id),
     );
+    if (p.mode === "testnet" && result.outcome !== "blocked") {
+      const safety = await this.checkEntrySafety(p, a, result);
+      result.entrySafety = safety;
+      if (!safety.allowed) {
+        result.outcome = "blocked";
+        result.reason = "LIQUIDATION_BUFFER";
+        result.message = safety.reason;
+        result.quantity = "0";
+      }
+    }
     const v: Preview = {
       id: this.store.id(),
       owner,
@@ -253,6 +317,7 @@ export class PactService {
         .get(p.accountId, p.plan.id, p.plan.version) as
         { intent: string } | undefined;
       if (existing) return this.intent(owner, existing.intent);
+      if (p.plan.mode === "testnet") this.requireEntriesActive(owner);
       const live = this.plan(p.plan.id);
       this.account(owner, p.accountId);
       if (p.expiresAt <= this.now())
@@ -280,6 +345,11 @@ export class PactService {
       if (p.decision.outcome === "blocked")
         throw new Fault("PREVIEW_BLOCKED", p.decision.message);
       const x = this.exposure(owner, p.accountId);
+      if (x.unverifiedLoss)
+        throw new Fault(
+          "ACCOUNTING_INCOMPLETE",
+          "Settled testnet costs are incomplete today. New entries are held until the daily budget can be verified.",
+        );
       if (x.busy)
         throw new Fault(
           "ACCOUNT_BUSY",
@@ -393,6 +463,15 @@ export class PactService {
   }
   async execute(i: Intent) {
     const a = this.account(i.owner, i.accountId);
+    if (i.mode === "testnet" && this.entryControl(i.owner).paused) {
+      i.state = "blocked";
+      this.event(
+        i,
+        "entries_paused",
+        "Owner paused new entries before submission. Nothing sent.",
+      );
+      return;
+    }
     if (i.mode === "testnet" && this.operatorBusy(i.id)) return;
     if (this.now() - i.createdAt > 15000) {
       i.state = "blocked";
@@ -421,6 +500,14 @@ export class PactService {
         this.now(),
         this.exposure(i.owner, a.id, i.id),
       );
+    if (i.mode === "testnet" && fresh.outcome !== "blocked") {
+      fresh.entrySafety = await this.checkEntrySafety(p, a, fresh);
+      if (!fresh.entrySafety.allowed) {
+        i.state = "blocked";
+        this.event(i, "liquidation_buffer_blocked", fresh.entrySafety.reason);
+        return;
+      }
+    }
     if (!insideApproval(fresh, i.decision, p.direction)) {
       i.state = "blocked";
       this.event(
@@ -465,6 +552,15 @@ export class PactService {
       ...(await this.venue!.prepare(i, "entry")),
       recordedAt: this.now(),
     };
+    if (this.entryControl(i.owner).paused) {
+      i.state = "blocked";
+      this.event(
+        i,
+        "entries_paused",
+        "Owner paused new entries during preparation. Nothing broadcast.",
+      );
+      return;
+    }
     if (
       this.now() - snapshot.observedAt > 5000 ||
       this.now() - i.createdAt > 15000 ||
@@ -541,6 +637,29 @@ export class PactService {
       return;
     }
     const observed = await this.venue!.observe(action);
+    if (observed.proof) {
+      const proof = observed.proof;
+      if (
+        proof.chainId !== 50383 ||
+        proof.role !== role ||
+        proof.hash !== action.hash ||
+        proof.owner.toLowerCase() !== i.owner.toLowerCase() ||
+        proof.pool.toLowerCase() !== action.pool.toLowerCase() ||
+        proof.nonce !== action.nonce
+      ) {
+        this.attention(
+          i,
+          "proof_mismatch",
+          "Transaction proof does not match this owner and recorded action. No execution success is claimed.",
+        );
+        return;
+      }
+      i.chainProofs = [
+        ...(i.chainProofs ?? []).filter((p) => p.role !== role),
+        observed.proof,
+      ];
+      this.save(i);
+    }
     if (observed.state === "pending") {
       // Older databases have no action timestamp. Use the matching leg's durable
       // event if available, never the age of the original approval.

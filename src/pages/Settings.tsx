@@ -1,5 +1,6 @@
 import { LivePrice } from "../components/LiveMarkets";
 import { TradingAccess } from "../components/TradingAccess";
+import { EntryControl } from "../components/EntryControl";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -459,6 +460,7 @@ export function AccountPage() {
         </section>
       </div>
       <TradingAccess />
+      {session?.mode === "testnet" && !browserPreview && <EntryControl />}
       {accounts.value?.length ? (
         <section className="panel connected-accounts">
           <h2>Accounts in this session</h2>

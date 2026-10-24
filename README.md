@@ -20,6 +20,8 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 
 The bounty's live-order requirement is still pending. A practice receipt or mocked-adapter test does not satisfy it.
 
+Mainnet is blocked in this release. [Execution qualification and release gates](docs/MAINNET.md) document implemented defenses, independent receipt verification and the evidence still required before a future mainnet pilot.
+
 ## Who it is for
 
 Trading communities sharing structured setups, and members who need an account-specific decision rather than copying someone else's quantity or chasing an expired entry.
@@ -79,6 +81,8 @@ The tests cover sizing bounds and grids, long/short price directions, invalid ma
 Desktop browser practice QA passed through approval, simulated close, refresh persistence and receipt download. Mobile-wallet QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
 
 Execution preflight requires the contract simulation's explicit success flag and sufficient operator balance for the prepared transaction's gas ceiling. A close signed more than five seconds after its position observation is held without broadcast. Access-check authentication, missing setup conditions, report expiry and changed-market response cancellation have regression coverage.
+
+Entry sizing now uses the current effective margin rate, reserves trading fees, and requires an SDK liquidation projection beyond the stop with a 1% stop-price buffer. Account includes a persistent new-entry pause. Confirmed receipts bind sender, pool, nonce and calldata to the recorded transaction, wait for two canonical block confirmations, and export actual native gas evidence. Live trading fees remain unattributed rather than reported as zero. Use `pnpm run verify:receipt /path/to/receipt.json` to independently re-read closed testnet execution.
 
 ## Live market data
 

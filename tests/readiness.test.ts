@@ -141,6 +141,36 @@ describe("read-only trading access checks", () => {
         }),
       });
       const cookie = login.headers.get("set-cookie")!.split(";")[0];
+      expect(
+        (
+          await (
+            await app.request("/api/entry-control", { headers: { cookie } })
+          ).json()
+        ).paused,
+      ).toBe(false);
+      expect(
+        (
+          await app.request("/api/entry-control", {
+            method: "PUT",
+            headers: { cookie, "Content-Type": "application/json" },
+            body: JSON.stringify({ paused: true }),
+          })
+        ).status,
+      ).toBe(403);
+      const paused = await app.request("/api/entry-control", {
+        method: "PUT",
+        headers: { ...headers, cookie },
+        body: JSON.stringify({ paused: true }),
+      });
+      expect(paused.status).toBe(200);
+      expect((await paused.json()).paused).toBe(true);
+      expect(
+        (
+          await (
+            await app.request("/api/entry-control", { headers: { cookie } })
+          ).json()
+        ).paused,
+      ).toBe(true);
       const response = await app.request(
         "/api/readiness?market=BTC-PERP&owner=" + owner,
         { headers: { cookie } },

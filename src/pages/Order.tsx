@@ -8,6 +8,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useState } from "react";
+import { formatUnits } from "viem";
 import type { Intent, Receipt } from "../core/types";
 import { api, usd, price, short } from "../api";
 import { useApp, useLoad } from "../state";
@@ -246,6 +247,53 @@ export function OrderPage() {
             </section>
           </div>
           <section className="panel fills-panel">
+            <h2>Chain verification</h2>
+            {i.chainProofs?.length ? (
+              <>
+                <p className="tiny muted">
+                  Each record matched the saved transaction's sender, pool,
+                  nonce and calldata, with two or more canonical block
+                  confirmations. Download the receipt to check the execution
+                  independently.
+                </p>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Leg</th>
+                        <th>Block</th>
+                        <th>Confirmations at check</th>
+                        <th>Actual gas cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {i.chainProofs.map((p) => (
+                        <tr key={p.hash}>
+                          <td>{p.role}</td>
+                          <td>{p.blockNumber}</td>
+                          <td>{p.confirmations}</td>
+                          <td>
+                            {formatUnits(BigInt(p.gasCostNativeWei), 18)} STT
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p className="muted">
+                {i.mode === "replay"
+                  ? "Practice has no blockchain proof."
+                  : "No canonical transaction proof has been recorded yet. A transaction hash alone does not establish a fill."}
+              </p>
+            )}
+            <p className="tiny muted">
+              Live trading fees and funding remain unattributed. Native gas is
+              shown separately and isn't converted into USDso PnL.
+            </p>
+          </section>
+          <section className="panel fills-panel">
             <h2>Observed fills</h2>
             {!i.fills.length ? (
               <p className="muted">
@@ -269,7 +317,9 @@ export function OrderPage() {
                         <td>{f.role}</td>
                         <td>{f.quantity}</td>
                         <td>{price(f.price)}</td>
-                        <td>{usd(f.fee)}</td>
+                        <td>
+                          {f.fee === null ? "Not attributed" : usd(f.fee)}
+                        </td>
                         <td>{f.txHash ? "Confirmed tx fill" : "Simulation"}</td>
                       </tr>
                     ))}

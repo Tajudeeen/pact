@@ -28,6 +28,7 @@ export function replaySnapshot(
     observedAt: account.scenario === "stale" ? now - 15000 : now,
     marginAvailable: account.balance,
     initialMarginRate: "0.05",
+    takerFeeRate: "0",
     position: "0",
     permitted: true,
   };

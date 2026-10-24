@@ -162,6 +162,14 @@ describe("testnet adapter boundary", () => {
       role: "entry",
     };
     const venue: Venue = {
+      entrySafety: async () => ({
+        allowed: true,
+        reason: "Fixture projection",
+        projectedLiquidationPrice: "0",
+        minimumGapBps: 100,
+        asOfBlock: "1",
+        observedAt: now,
+      }),
       position: async () => ({
         position: "0",
         mark: "67595",

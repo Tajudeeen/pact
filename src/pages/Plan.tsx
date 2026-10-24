@@ -279,6 +279,10 @@ function PersonalCheck({ plan }: { plan: Plan }) {
                   <dd>{usd(d.fundingReserve)}</dd>
                 </div>
                 <div className="cost-total">
+                  <dt>Trading-fee reserve</dt>
+                  <dd>{usd(d.feeReserve ?? "0")}</dd>
+                </div>
+                <div className="cost-total">
                   <dt>Planned risk</dt>
                   <dd>{usd(d.plannedLoss)}</dd>
                 </div>
@@ -291,6 +295,17 @@ function PersonalCheck({ plan }: { plan: Plan }) {
                   <dd>{d.limitedBy}</dd>
                 </div>
               </dl>
+              {d.entrySafety && (
+                <p className="tiny muted">
+                  Projected liquidation:{" "}
+                  {d.entrySafety.projectedLiquidationPrice === null
+                    ? "unavailable"
+                    : price(d.entrySafety.projectedLiquidationPrice)}{" "}
+                  · at block {d.entrySafety.asOfBlock}. {d.entrySafety.reason}{" "}
+                  This is an estimate and can move with funding, price, and
+                  collateral.
+                </p>
+              )}
               <div className="protection-note">
                 <ShieldCheck size={18} />
                 <div>

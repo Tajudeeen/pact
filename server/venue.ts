@@ -4,6 +4,9 @@ import type {
   MarketSnapshot,
   Plan,
   TradeFill,
+  Decision,
+  EntrySafety,
+  ChainProof,
 } from "../src/core/types";
 import type { TradingReadiness } from "../src/core/readiness";
 export interface PreparedAction {
@@ -26,8 +29,14 @@ export type Observation = {
   state: "pending" | "reverted" | "filled" | "attention";
   fills: TradeFill[];
   detail: string;
+  proof?: ChainProof;
 };
 export interface Venue {
+  entrySafety?(
+    plan: Plan,
+    account: Account,
+    decision: Decision,
+  ): Promise<EntrySafety>;
   readiness?(owner: string, market: string): Promise<TradingReadiness>;
   network?(): Promise<{
     chainId: number;

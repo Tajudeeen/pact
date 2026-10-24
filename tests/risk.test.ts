@@ -17,6 +17,46 @@ const p = seededPlans(now)[0],
 const s = replaySnapshot(p, a, now);
 describe("personal risk admission", () => {
   it.each([
+    { tick: "0" },
+    { lot: "0" },
+    { ask: "NaN" },
+    { bid: "infinity" },
+    { initialMarginRate: "0" },
+    { fundingHourly: "garbage" },
+    { position: "NaN" },
+    { depth: "-1" },
+    { takerFeeRate: "-0.1" },
+    { bid: "68000", ask: "67000" },
+  ])("fails closed on invalid numeric snapshot fields: %j", (bad) => {
+    const d = evaluate(p, DEFAULT_POLICY, { ...s, ...bad }, now);
+    expect(d.reason).toBe("INVALID_SNAPSHOT");
+    expect(d.quantity).toBe("0");
+  });
+  it("rejects a non-finite observation timestamp", () => {
+    expect(
+      evaluate(p, DEFAULT_POLICY, { ...s, observedAt: NaN }, now).reason,
+    ).toBe("STALE_DATA");
+  });
+  it("reserves both entry and stop-exit fees and reduces allowed size", () => {
+    const free = evaluate(p, DEFAULT_POLICY, s, now);
+    const paid = evaluate(
+      p,
+      DEFAULT_POLICY,
+      { ...s, takerFeeRate: "0.001" },
+      now,
+    );
+    expect(new Decimal(paid.feeReserve!).gt(0)).toBe(true);
+    expect(new Decimal(paid.quantity).lt(free.quantity)).toBe(true);
+    expect(new Decimal(paid.plannedLoss).lte(DEFAULT_POLICY.risk)).toBe(true);
+    expect(
+      new Decimal(paid.stopLoss)
+        .plus(paid.slippageReserve)
+        .plus(paid.fundingReserve)
+        .plus(paid.feeReserve!)
+        .eq(paid.plannedLoss),
+    ).toBe(true);
+  });
+  it.each([
     { mark: "0", markValid: false },
     { mark: "67595", markValid: false },
     { mark: "NaN", markValid: true },

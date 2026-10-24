@@ -91,6 +91,28 @@ export function Evidence() {
           </div>
         </section>
         <section className="evidence-limits">
+          <h2>Verify an exported testnet receipt.</h2>
+          <p>
+            Download a closed testnet order's receipt and run the read-only
+            checker from the source repository:
+          </p>
+          <pre>
+            <code>pnpm run verify:receipt ./pact-receipt.json</code>
+          </pre>
+          <p>
+            It re-reads both transactions, checks their canonical blocks,
+            decodes fills with the official SDK, and compares owner, market,
+            quantity, side and price bounds. Practice receipts, changed setup
+            terms and mismatched fills are refused. It doesn't prove off-chain
+            consent or complete net PnL.
+          </p>
+          <Badge tone="amber">MAINNET BLOCKED</Badge>
+          <p>
+            This release only executes on Tokyo testnet. Mainnet requires
+            published perps deployments, qualified closing and protection, cost
+            attribution, recovery and security checks, and a bounded pilot.
+            Deploying this frontend does not enable mainnet trading.
+          </p>
           <h2>Current limits, stated plainly.</h2>
           <ul>
             <li>
@@ -107,8 +129,14 @@ export function Evidence() {
               accounts and no outside trading are required.
             </li>
             <li>
-              Actual funding settlements and native gas costs are not yet
-              attributed to live receipts. Net testnet PnL stays incomplete.
+              Trading fees and funding settlements are not yet attributed to
+              live PnL. Net testnet PnL stays incomplete.
+            </li>
+            <li>
+              Actual native gas is recorded separately when transaction proof is
+              available. Trading fees and funding remain unattributed. A closed
+              testnet trade with incomplete costs blocks further entries for
+              that account in the same UTC day.
             </li>
             <li>
               Cloudflare runs one persistent SQLite Durable Object per operator

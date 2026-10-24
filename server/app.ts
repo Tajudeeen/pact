@@ -9,6 +9,7 @@ import { planSchema, policySchema } from "./validation";
 import { receiptOf } from "../src/core/receipt";
 import type { Scenario } from "../src/core/types";
 import type { MarketBoard } from "../src/core/markets";
+import { RELEASE } from "./release";
 const id = z.string().min(1).max(150);
 export function createApp(
   service: PactService,
@@ -137,6 +138,7 @@ export function createApp(
       protection: "monitored",
       heartbeatAt: h ? Number(h.value) : null,
       liveMaxNotional: "25",
+      release: RELEASE,
     });
   });
   app.get("/api/network", async (c) => {
@@ -220,6 +222,30 @@ export function createApp(
     c.json(service.revoke(requireUser(c.get("owner")), c.req.param("id"))),
   );
   app.get("/api/accounts", (c) => c.json(service.accounts(c.get("owner"))));
+  app.get("/api/entry-control", (c) => {
+    if (c.get("mode") !== "testnet")
+      throw new Fault(
+        "WALLET_REQUIRED",
+        "Sign in with your wallet to manage entries.",
+        403,
+      );
+    return c.json(service.entryControl(requireUser(c.get("owner"))));
+  });
+  app.put("/api/entry-control", async (c) => {
+    if (c.get("mode") !== "testnet")
+      throw new Fault(
+        "WALLET_REQUIRED",
+        "Sign in with your wallet to manage entries.",
+        403,
+      );
+    const { paused } = z
+      .object({ paused: z.boolean() })
+      .strict()
+      .parse(await c.req.json());
+    return c.json(
+      service.setEntriesPaused(requireUser(c.get("owner")), paused),
+    );
+  });
   app.get("/api/readiness", async (c) => {
     const owner = requireUser(c.get("owner"));
     if (c.get("mode") !== "testnet")

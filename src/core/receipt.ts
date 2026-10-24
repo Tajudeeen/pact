@@ -14,7 +14,12 @@ export function receiptOf(intent: Intent): Receipt {
     size(entries).gt(0) &&
     size(entries).eq(size(exits)) &&
     intent.state === "closed";
-  const fees = intent.fills.reduce((a, f) => a.plus(f.fee), new Decimal(0));
+  const feesKnown =
+    intent.mode === "replay" && intent.fills.every((f) => f.fee !== null);
+  const fees = intent.fills.reduce(
+    (a, f) => a.plus(f.fee ?? "0"),
+    new Decimal(0),
+  );
   const gross = flat
     ? value(exits)
         .minus(value(entries))
@@ -24,12 +29,17 @@ export function receiptOf(intent: Intent): Receipt {
     ...(flat ? [] : ["Position has not been fully closed and reconciled."]),
     ...(intent.mode === "testnet"
       ? [
+          "Trading fees have not been independently attributed from fee events.",
           "Actual funding settlements have not been attributed.",
           "Native gas costs are not included in USDso PnL.",
         ]
       : []),
   ];
   return {
+    schemaVersion: 2,
+    owner: intent.owner,
+    plan: intent.plan,
+    chainProofs: intent.chainProofs ?? [],
     id: intent.id,
     mode: intent.mode,
     chainId: intent.mode === "testnet" ? 50383 : null,
@@ -45,7 +55,7 @@ export function receiptOf(intent: Intent): Receipt {
     executionPlannedLoss: intent.execution?.plannedLoss ?? null,
     fills: intent.fills,
     grossPnl: gross?.toFixed() ?? null,
-    tradingFees: fees.toFixed(),
+    tradingFees: feesKnown ? fees.toFixed() : null,
     fundingPaid: intent.mode === "replay" ? "0" : null,
     netPnl:
       flat && intent.mode === "replay" ? gross!.minus(fees).toFixed() : null,

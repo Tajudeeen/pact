@@ -8,7 +8,12 @@ export function evaluate(
   policy: Policy,
   snapshot: MarketSnapshot,
   now: number,
-  exposure = { reserved: "0", dailyLoss: "0", busy: false },
+  exposure: {
+    reserved: string;
+    dailyLoss: string;
+    busy: boolean;
+    unverifiedLoss?: boolean;
+  } = { reserved: "0", dailyLoss: "0", busy: false },
 ): Decision {
   const base: Decision = {
     outcome: "blocked",
@@ -32,27 +37,70 @@ export function evaluate(
     reason,
     message,
   });
+  const numberIs = (
+    value: unknown,
+    sign: "positive" | "nonnegative" | "signed" = "nonnegative",
+  ) => {
+    try {
+      const n = new D(value as string);
+      return (
+        n.isFinite() &&
+        (sign === "signed" || (sign === "positive" ? n.gt(0) : n.gte(0)))
+      );
+    } catch {
+      return false;
+    }
+  };
   if (plan.revoked)
     return block("PLAN_REVOKED", "The author withdrew this setup.");
   if (now >= plan.expiresAt)
     return block("PLAN_EXPIRED", "The entry window has closed.");
   if (snapshot.market !== plan.market)
     return block("MARKET_CHANGED", "This quote belongs to another market.");
-  if (now - snapshot.observedAt > 5000 || snapshot.observedAt > now + 1000)
+  if (exposure.unverifiedLoss)
+    return block(
+      "ACCOUNTING_INCOMPLETE",
+      "A closed testnet trade has incomplete settled costs today. Further entries are held because the daily loss budget cannot be verified.",
+    );
+  if (
+    !Number.isFinite(snapshot.observedAt) ||
+    now - snapshot.observedAt > 5000 ||
+    snapshot.observedAt > now + 1000
+  )
     return block(
       "STALE_DATA",
       "Market or account data is too old. Refresh before deciding.",
     );
-  if (
-    !snapshot.markValid ||
-    !new D(snapshot.mark).isFinite() ||
-    new D(snapshot.mark).lte(0)
-  )
+  if (snapshot.markValid !== true || !numberIs(snapshot.mark, "positive"))
     return block(
       "INVALID_MARK",
       "A valid mark price is required. Refresh before deciding.",
     );
-  if (!snapshot.permitted)
+  if (
+    ![
+      snapshot.bid,
+      snapshot.ask,
+      snapshot.tick,
+      snapshot.lot,
+      snapshot.minQty,
+      snapshot.initialMarginRate,
+    ].every((v) => numberIs(v, "positive")) ||
+    ![snapshot.maxQty, snapshot.depth, snapshot.marginAvailable].every((v) =>
+      numberIs(v),
+    ) ||
+    !numberIs(
+      snapshot.takerFeeRate ?? (plan.mode === "replay" ? "0" : "NaN"),
+    ) ||
+    !numberIs(snapshot.fundingHourly, "signed") ||
+    !numberIs(snapshot.position, "signed") ||
+    new D(snapshot.bid).gt(snapshot.ask) ||
+    new D(snapshot.initialMarginRate).gt(1)
+  )
+    return block(
+      "INVALID_SNAPSHOT",
+      "Market or account inputs are invalid. Nothing can be approved until a valid read returns.",
+    );
+  if (snapshot.permitted !== true)
     return block(
       "PROTOCOL_BLOCKED",
       snapshot.reason ?? "This account cannot place this order.",
@@ -100,7 +148,11 @@ export function evaluate(
   const funding = limit
     .mul(new D(snapshot.fundingHourly).abs())
     .mul(policy.fundingHours);
-  const unit = distance.plus(reserve).plus(funding);
+  const feeRate = new D(snapshot.takerFeeRate ?? "0");
+  const fee = limit
+    .plus(new D(plan.stop).mul(new D(1).plus(slip)))
+    .mul(feeRate);
+  const unit = distance.plus(reserve).plus(funding).plus(fee);
   if (unit.lte(0) || distance.lte(0))
     return block(
       "INVALID_STOP",
@@ -129,7 +181,8 @@ export function evaluate(
     plan.direction === "long"
       ? new D(plan.target).minus(limit)
       : limit.minus(plan.target);
-  const rr = grossReward.minus(funding).div(unit);
+  const rewardFees = limit.plus(plan.target).mul(feeRate);
+  const rr = grossReward.minus(funding).minus(rewardFees).div(unit);
   if (rr.lt(policy.minRewardRisk))
     return block(
       "REWARD_RISK",
@@ -150,6 +203,7 @@ export function evaluate(
     stopLoss: quantity.mul(distance).toFixed(),
     slippageReserve: quantity.mul(reserve).toFixed(),
     fundingReserve: quantity.mul(funding).toFixed(),
+    feeReserve: quantity.mul(fee).toFixed(),
     rewardRisk: rr.toFixed(2),
     budget: budget.toFixed(),
     limitedBy,

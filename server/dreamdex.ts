@@ -16,14 +16,24 @@ import {
   encodeFunctionData,
   keccak256,
   zeroAddress,
+  parseTransaction,
+  recoverTransactionAddress,
   type Address,
   type Hex,
+  type TransactionSerialized,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ReadinessCheck, TradingReadiness } from "../src/core/readiness";
 import Decimal from "decimal.js";
 import { rpcSocketConstructor } from "./socket";
-import type { Account, Intent, MarketSnapshot, Plan } from "../src/core/types";
+import type {
+  Account,
+  Intent,
+  MarketSnapshot,
+  Plan,
+  Decision,
+  EntrySafety,
+} from "../src/core/types";
 import type {
   Observation,
   PositionObservation,
@@ -35,6 +45,8 @@ import {
   emptyQuote,
   type QuoteObservation,
 } from "../src/core/markets";
+import { confirmedOrder, EXECUTION_CHAIN_ID } from "./chain-proof";
+import { assertExecutionNetwork } from "./release";
 export const CHAIN_ID = 50383;
 export const RPC = "https://api.hideki2.infra.testnet.somnia.network";
 export const WS = "wss://api.hideki2.infra.testnet.somnia.network/ws";
@@ -51,7 +63,12 @@ export class DreamDex implements Venue {
   readonly publicClient;
   readonly key;
   readonly wallet;
-  constructor(privateKey?: Hex, socketConstructor = rpcSocketConstructor()) {
+  constructor(
+    privateKey?: Hex,
+    socketConstructor = rpcSocketConstructor(),
+    network = process.env.PACT_NETWORK ?? "tokyo-testnet",
+  ) {
+    assertExecutionNetwork(network);
     this.sdk = new SomniaMarkets({
       chain: hidekiTestnet,
       wsRpcUrl: process.env.PACT_WS_URL ?? WS,
@@ -267,6 +284,60 @@ export class DreamDex implements Venue {
       ),
     );
   }
+  async entrySafety(
+    plan: Plan,
+    account: Account,
+    decision: Decision,
+  ): Promise<EntrySafety> {
+    const observedAt = Date.now();
+    if ((await this.publicClient.getChainId()) !== CHAIN_ID)
+      throw new Error("Wrong entry projection network.");
+    const m = await this.market(plan.market);
+    const quantity = parseUnits(decision.quantity, m.baseDecimals);
+    const projected = await this.sdk.client.previewPerpLiquidationPrice({
+      pool: m.poolAddress,
+      marginBank: m.marginBank,
+      account: account.owner as Address,
+      isBid: plan.direction === "long",
+      quantity,
+      price: parseUnits(decision.limit, m.quoteDecimals),
+    });
+    const base = {
+      minimumGapBps: 100,
+      asOfBlock: projected.asOfBlock.toString(),
+      observedAt,
+    };
+    if (!projected.priceable)
+      return {
+        ...base,
+        allowed: false,
+        reason: "A valid liquidation projection is unavailable.",
+        projectedLiquidationPrice: null,
+      };
+    const liquidation = projected.projectedLiquidationPrice;
+    const price =
+      liquidation === null ? null : formatUnits(liquidation, m.quoteDecimals);
+    const expected = plan.direction === "long" ? quantity : -quantity;
+    const stop = new Decimal(plan.stop);
+    const gap = stop.mul("0.01");
+    const allowed =
+      projected.currentSize === 0n &&
+      projected.projectedSize === expected &&
+      projected.projectedEquity > 0n &&
+      liquidation !== null &&
+      liquidation >= 0n &&
+      (plan.direction === "long"
+        ? new Decimal(price!).lte(stop.minus(gap))
+        : new Decimal(price!).gte(stop.plus(gap)));
+    return {
+      ...base,
+      allowed,
+      projectedLiquidationPrice: price,
+      reason: allowed
+        ? "Projected liquidation is beyond the stop with at least a 1% stop-price buffer."
+        : "The projected account is not flat before entry, or liquidation is too close to the stop. Add margin or change the setup and preview again.",
+    };
+  }
   async snapshot(plan: Plan, account: Account): Promise<MarketSnapshot> {
     const m = await this.market(plan.market),
       owner = account.owner as Address,
@@ -275,17 +346,20 @@ export class DreamDex implements Venue {
       throw new Error("Use a dedicated operator key, never the owner key.");
     if ((await this.publicClient.getChainId()) !== CHAIN_ID)
       throw new Error("RPC chain is not Somnia Tokyo testnet.");
-    const [state, margin, position, book, orders] = await Promise.all([
-      this.sdk.client.getPerpState(m.poolAddress),
-      this.sdk.client.getMarginAccount(m.marginBank, owner),
-      this.sdk.client.getPerpPosition({
-        marginBank: m.marginBank,
-        account: owner,
-        pool: m.poolAddress,
-      }),
-      this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 20 }),
-      this.sdk.client.getOpenOrdersOnchain([m.poolAddress], owner),
-    ]);
+    const [state, margin, position, book, orders, health, risk] =
+      await Promise.all([
+        this.sdk.client.getPerpState(m.poolAddress),
+        this.sdk.client.getMarginAccount(m.marginBank, owner),
+        this.sdk.client.getPerpPosition({
+          marginBank: m.marginBank,
+          account: owner,
+          pool: m.poolAddress,
+        }),
+        this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 20 }),
+        this.sdk.client.getOpenOrdersOnchain([m.poolAddress], owner),
+        this.sdk.client.getPerpHealthSnapshot(m.poolAddress),
+        this.sdk.client.getPerpRiskParams(m.poolAddress),
+      ]);
     const levels = plan.direction === "long" ? book.asks : book.bids;
     if (!book.asks[0] || !book.bids[0])
       throw new Error("The market has no two-sided book.");
@@ -307,6 +381,7 @@ export class DreamDex implements Venue {
     );
     const permitted =
       state.markPriceOk &&
+      health.priceable &&
       max.priceable &&
       max.placeable &&
       permissions.every(Boolean) &&
@@ -327,7 +402,7 @@ export class DreamDex implements Venue {
       bid: formatUnits(book.bids[0].price, m.quoteDecimals),
       ask: formatUnits(book.asks[0].price, m.quoteDecimals),
       mark: formatUnits(state.markPrice, m.quoteDecimals),
-      markValid: state.markPriceOk && state.markPrice > 0n,
+      markValid: state.markPriceOk && state.markPrice > 0n && health.priceable,
       tick: formatUnits(BigInt(m.tickSize), m.quoteDecimals),
       lot: formatUnits(BigInt(m.lotSize), m.baseDecimals),
       minQty: formatUnits(BigInt(m.minQuantity), m.baseDecimals),
@@ -339,7 +414,16 @@ export class DreamDex implements Venue {
         .toFixed(),
       observedAt: start,
       marginAvailable: formatUnits(margin.withdrawable, m.quoteDecimals),
-      initialMarginRate: new Decimal(m.initialMarginBps).div(10000).toFixed(),
+      initialMarginRate: new Decimal(
+        health.priceable
+          ? health.effectiveImfBps.toString()
+          : m.initialMarginBps,
+      )
+        .div(10000)
+        .toFixed(),
+      takerFeeRate: new Decimal(risk.takerFeeBpsTimes1k.toString())
+        .div(10000000)
+        .toFixed(),
       position: formatUnits(position.size, m.baseDecimals),
       permitted,
       reason: !this.key
@@ -475,16 +559,48 @@ export class DreamDex implements Venue {
     };
   }
   async broadcast(a: PreparedAction) {
+    await this.signedAction(a);
+    if ((await this.publicClient.getChainId()) !== EXECUTION_CHAIN_ID)
+      throw new Error("Wrong broadcast network. Nothing sent.");
     await this.publicClient.sendRawTransaction({
       serializedTransaction: a.raw as Hex,
     });
   }
+  private async signedAction(a: PreparedAction) {
+    const raw = a.raw as TransactionSerialized;
+    const tx = parseTransaction(raw);
+    const operator = await recoverTransactionAddress({
+      serializedTransaction: raw,
+    });
+    if (
+      keccak256(raw) !== a.hash ||
+      tx.chainId !== CHAIN_ID ||
+      tx.to?.toLowerCase() !== a.pool.toLowerCase() ||
+      tx.nonce !== a.nonce ||
+      (tx.value ?? 0n) !== 0n ||
+      !tx.data ||
+      !this.key ||
+      operator.toLowerCase() !== this.key.address.toLowerCase()
+    )
+      throw new Error(
+        "Persisted signed order identity or execution network is invalid. Nothing sent.",
+      );
+    return {
+      hash: a.hash as Hex,
+      pool: a.pool as Address,
+      operator,
+      input: tx.data,
+      nonce: a.nonce,
+      role: a.role,
+    };
+  }
   async observe(a: PreparedAction): Promise<Observation> {
-    let r;
+    let result;
     try {
-      r = await this.publicClient.getTransactionReceipt({
-        hash: a.hash as Hex,
-      });
+      result = await confirmedOrder(
+        this.publicClient,
+        await this.signedAction(a),
+      );
     } catch (error) {
       if ((error as Error).name === "TransactionReceiptNotFoundError")
         return {
@@ -494,22 +610,42 @@ export class DreamDex implements Venue {
         };
       throw error;
     }
-    if (r.status === "reverted")
+    if (result.state === "pending")
+      return {
+        state: "pending",
+        fills: [],
+        detail:
+          "Waiting for two canonical block confirmations. No replacement order is sent.",
+      };
+    if (result.state === "reverted")
       return {
         state: "reverted",
         fills: [],
         detail: "The transaction reverted on chain.",
+        proof: result.proof,
       };
-    const decoded = decodePlaceOrder(r, a.pool as Address);
-    const block = await this.publicClient.getBlock({
-      blockNumber: r.blockNumber,
-    });
+    const decoded = decodePlaceOrder(result.receipt, a.pool as Address);
+    const order = result.order!;
+    if (
+      !decoded.fills.length ||
+      decoded.fills.some((f) =>
+        order[1] ? f.fillPrice > order[3] : f.fillPrice < order[3],
+      ) ||
+      decoded.fills.reduce((sum, f) => sum + f.quantityFilled, 0n) !== order[4]
+    )
+      return {
+        state: "attention",
+        fills: [],
+        proof: result.proof,
+        detail:
+          "Confirmed fills do not match the signed FOK quantity and price bound.",
+      };
     const fills = decoded.fills.map((f) => ({
       role: a.role,
       quantity: formatUnits(f.quantityFilled, a.baseDecimals),
       price: formatUnits(f.fillPrice, a.quoteDecimals),
-      fee: "0",
-      at: Number(block.timestamp) * 1000,
+      fee: null,
+      at: result.at,
       txHash: a.hash,
     }));
     return {
@@ -518,6 +654,7 @@ export class DreamDex implements Venue {
       detail: fills.length
         ? "Fill events decoded from the confirmed transaction."
         : "Successful receipt without decoded fills. Review required.",
+      proof: result.proof,
     };
   }
   async shutdown() {
