@@ -1,4 +1,5 @@
 import { LivePrice } from "../components/LiveMarkets";
+import { TradingAccess } from "../components/TradingAccess";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -457,6 +458,7 @@ export function AccountPage() {
           </p>
         </section>
       </div>
+      <TradingAccess />
       {accounts.value?.length ? (
         <section className="panel connected-accounts">
           <h2>Accounts in this session</h2>

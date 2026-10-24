@@ -13,6 +13,7 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 - SQLite persistence, account-scoped reservations, unique approvals, exact execution rechecks and restart recovery.
 - Automatic recovery checks and an owner-only recovery button. Invalid marks pause exits. A close requires both matched fills and a fresh flat-position read.
 - EVM wallet sign-in and a separate, explicitly configured linked-operator testnet adapter.
+- Read-only trading access checks show missing permissions, operator gas, perps margin, outside positions and market-feed blockers for the signed-in wallet. Reports expire after 30 seconds. A passing access check never approves an order.
 - Read-only probe passed: chain ID 50383, 21 discovered markets and a valid live mark. **No actual testnet order has been placed by this build yet.** See [evidence](evidence/README.md).
 - A [Cloudflare deployment](https://pact-testnet.tajudeenowoeteniyan.workers.dev) runs the server-backed app with SQLite Durable Objects and alarms. Testnet sign-in is restricted to the configured owner wallet.
 - A [private build preview](https://pact-build-preview.deeen-code.chatgpt.site) is available on ChatGPT Sites. It simulates practice in your browser. The private preview remains browser-local practice. A demo recording and funded testnet lifecycle are still pending. The GitHub repository remains private.
@@ -76,6 +77,8 @@ Use **`pnpm run doctor`**, not pnpm's unrelated built-in `pnpm doctor` command. 
 The tests cover sizing bounds and grids, long/short price directions, invalid marks, stale/future data, exposure and budgets, duplicate approvals, consent expiry, cross-user isolation, policy changes, revoked plans, actual SQLite close/reopen recovery, uncertain broadcasts, persist-before-broadcast, close-specific timeouts, flat-position confirmation, and account-change/late-response consent invalidation. A rendered React recovery test calls the real API and SQLite service. Adapter tests decode the actual signed-call payload with mocked transports to check that it uses the freshly evaluated price.
 
 Desktop browser practice QA passed through approval, simulated close, refresh persistence and receipt download. Mobile-wallet QA and a funded testnet lifecycle remain unverified. DOM integration tests exercise the real React → HTTP handler → SQLite service path without a browser or network.
+
+Execution preflight requires the contract simulation's explicit success flag and sufficient operator balance for the prepared transaction's gas ceiling. A close signed more than five seconds after its position observation is held without broadcast. Access-check authentication, missing setup conditions, report expiry and changed-market response cancellation have regression coverage.
 
 ## Live market data
 

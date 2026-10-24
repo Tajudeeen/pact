@@ -20,6 +20,7 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import type { ReadinessCheck, TradingReadiness } from "../src/core/readiness";
 import Decimal from "decimal.js";
 import { rpcSocketConstructor } from "./socket";
 import type { Account, Intent, MarketSnapshot, Plan } from "../src/core/types";
@@ -144,6 +145,128 @@ export class DreamDex implements Venue {
       }),
     );
   }
+  async readiness(
+    ownerAddress: string,
+    symbol: string,
+  ): Promise<TradingReadiness> {
+    const checkedAt = Date.now();
+    if ((await this.publicClient.getChainId()) !== CHAIN_ID)
+      throw new Error("RPC chain is not Somnia Tokyo testnet.");
+    const m = await this.market(symbol),
+      owner = ownerAddress as Address;
+    const operator = this.key?.address ?? null;
+    const [state, margin, position, orders, book, permissions, gas] =
+      await Promise.all([
+        this.sdk.client.getPerpState(m.poolAddress),
+        this.sdk.client.getMarginAccount(m.marginBank, owner),
+        this.sdk.client.getPerpPosition({
+          marginBank: m.marginBank,
+          account: owner,
+          pool: m.poolAddress,
+        }),
+        this.sdk.client.getOpenOrdersOnchain([m.poolAddress], owner),
+        this.sdk.client.getSpotOrderBook(m.poolAddress, { depth: 1 }),
+        operator
+          ? this.operatorPermissions(owner, m.poolAddress)
+          : Promise.resolve([false, false, false]),
+        operator
+          ? Promise.all([
+              this.publicClient.getBalance({ address: operator }),
+              this.publicClient.getGasPrice(),
+            ])
+          : Promise.resolve([0n, 0n]),
+      ]);
+    const checks: ReadinessCheck[] = [];
+    const check = (id: string, label: string, pass: boolean, detail: string) =>
+      checks.push({ id, label, status: pass ? "pass" : "blocked", detail });
+    check(
+      "operator",
+      "Separate operator",
+      !!operator && operator.toLowerCase() !== owner.toLowerCase(),
+      operator
+        ? `Owner ${owner}. Operator ${operator}.`
+        : "Configure a separate Pact operator.",
+    );
+    ["Place orders", "Cancel orders", "Reduce positions"].forEach((label, n) =>
+      check(
+        `permission-${n}`,
+        label,
+        permissions[n] === true,
+        permissions[n]
+          ? "Operator permission observed for this market."
+          : "Link the operator with this permission in dreamDEX for this market.",
+      ),
+    );
+    const gasReserve = gas[1] * 20000000n;
+    check(
+      "gas",
+      "Operator testnet gas",
+      gasReserve > 0n && gas[0] >= gasReserve,
+      `${formatUnits(gas[0], 18)} STT available. Current two-transaction reserve: ${formatUnits(gasReserve, 18)} STT, using two 10,000,000 gas limits. Fees can change.`,
+    );
+    check(
+      "margin",
+      "Perps margin",
+      margin.marginStatus === "Healthy" && margin.withdrawable > 0n,
+      `${formatUnits(margin.withdrawable, m.quoteDecimals)} USDso withdrawable. Margin status: ${margin.marginStatus}. Order sizing is checked separately.`,
+    );
+    check(
+      "position",
+      "Dedicated account is flat",
+      position.size === 0n &&
+        !margin.activePerpPools.some(
+          (p) => p.toLowerCase() !== m.poolAddress.toLowerCase(),
+        ),
+      "Close outside positions and keep other bots out of this account before a new Pact entry.",
+    );
+    check(
+      "orders",
+      "No resting orders in this market",
+      orders.orders.length === 0,
+      `${orders.orders.length} resting orders observed in the selected market.`,
+    );
+    check(
+      "mark",
+      "Valid mark",
+      state.markPriceOk && state.markPrice > 0n,
+      state.markPriceOk && state.markPrice > 0n
+        ? "The protocol reports a valid positive mark."
+        : "Wait for a valid positive protocol mark.",
+    );
+    check(
+      "book",
+      "Two-sided order book",
+      !!book.asks[0] &&
+        !!book.bids[0] &&
+        book.asks[0].price > 0n &&
+        book.bids[0].price > 0n,
+      "A two-sided book is needed. Your actual order must also pass size and fill-or-kill simulation.",
+    );
+    return {
+      readOnly: true,
+      chainId: 50383,
+      owner,
+      operator,
+      market: symbol,
+      pool: m.poolAddress,
+      checkedAt,
+      validForMs: Math.max(0, 30000 - (Date.now() - checkedAt)),
+      ready: checks.every((c) => c.status === "pass"),
+      checks,
+    };
+  }
+  private operatorPermissions(owner: Address, pool: Address) {
+    return Promise.all(
+      ["0x80054449", "0xe37b444b", "0x364c2587"].map((s) =>
+        this.publicClient.readContract({
+          address: pool,
+          abi,
+          functionName: "isOperatorAuthorized",
+          args: [owner, this.key!.address, s as Hex],
+        }),
+      ),
+    );
+  }
   async snapshot(plan: Plan, account: Account): Promise<MarketSnapshot> {
     const m = await this.market(plan.market),
       owner = account.owner as Address,
@@ -177,16 +300,7 @@ export class DreamDex implements Venue {
       autoPull: false,
     });
     const permissions = this.key
-      ? await Promise.all(
-          ["0x80054449", "0xe37b444b", "0x364c2587"].map((s) =>
-            this.publicClient.readContract({
-              address: m.poolAddress,
-              abi,
-              functionName: "isOperatorAuthorized",
-              args: [owner, this.key!.address, s as Hex],
-            }),
-          ),
-        )
+      ? await this.operatorPermissions(owner, m.poolAddress)
       : [false];
     const other = margin.activePerpPools.some(
       (p) => p.toLowerCase() !== m.poolAddress.toLowerCase(),
@@ -317,7 +431,7 @@ export class DreamDex implements Venue {
       zeroAddress,
       0n,
     ] as const;
-    await this.publicClient.simulateContract({
+    const simulation = await this.publicClient.simulateContract({
       address: m.poolAddress,
       abi,
       functionName: "placeOrderFor",
@@ -325,6 +439,10 @@ export class DreamDex implements Venue {
       account: this.key,
       gas: 10000000n,
     });
+    if (simulation.result[0] !== true)
+      throw new Error(
+        "The protocol simulation refused this fill-or-kill order. Nothing signed or broadcast.",
+      );
     const nonce = await this.publicClient.getTransactionCount({
       address: this.key.address,
       blockTag: "pending",
@@ -337,6 +455,14 @@ export class DreamDex implements Venue {
       nonce,
       chain: hidekiTestnet,
     });
+    const fee = request.maxFeePerGas ?? request.gasPrice;
+    const balance = await this.publicClient.getBalance({
+      address: this.key.address,
+    });
+    if (fee === undefined || fee <= 0n || balance < 10000000n * fee)
+      throw new Error(
+        "Operator STT balance cannot cover this transaction's gas ceiling. Fund the separate operator before retrying.",
+      );
     const raw = await this.wallet.signTransaction(request);
     return {
       hash: keccak256(raw),

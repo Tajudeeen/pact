@@ -5,6 +5,7 @@ import type {
   Plan,
   TradeFill,
 } from "../src/core/types";
+import type { TradingReadiness } from "../src/core/readiness";
 export interface PreparedAction {
   hash: string;
   raw: string;
@@ -27,6 +28,7 @@ export type Observation = {
   detail: string;
 };
 export interface Venue {
+  readiness?(owner: string, market: string): Promise<TradingReadiness>;
   network?(): Promise<{
     chainId: number;
     marketCount: number;

@@ -26,6 +26,12 @@ A $25 server notional cap applies in addition to personal limits. A $25 limit is
 
 ## Collect real evidence
 
+Before the first order, open Account, sign in with the configured owner and press **Check testnet access** for BTC or ETH. The authenticated `/api/readiness?market=BTC-PERP` endpoint only reads the signed-in owner's account. It checks Tokyo chain ID before discovery, the separate operator, place/cancel/reduce permissions, operator STT balance, healthy funded margin, a flat dedicated account, resting orders in the selected market, mark validity and a two-sided book. RPC failure produces an error, never a ready report. Browser-local practice cannot call this authenticated check.
+
+The gas check reserves two 10,000,000 gas limits at the observed gas price. This is a conservative onboarding reference, not a fee guarantee. Before signing either leg, the adapter separately checks balance against the prepared transaction's actual fee ceiling. Reports expire 30 seconds after the read began and clear on a market/wallet change. Passing them does not establish enough margin, depth or size for a particular setup. The normal preview, approval and fresh simulation still apply.
+
+The adapter checks the simulation's explicit boolean result, including non-reverting refusals. A close taking over five seconds to prepare is left unsent with risk reserved. Recovery can re-observe the position before another close attempt. No order was placed to qualify these changes.
+
 1. Save the actual order transaction hash and its confirmed receipt.
 2. Verify the pool, owner, side, quantity and price against the approval.
 3. Verify decoded fill events, not only transaction success.

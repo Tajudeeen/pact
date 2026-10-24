@@ -15,7 +15,7 @@ Evidence is separated by what it actually establishes. No live order hashes, fun
 
 The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
 
-Local checks: **78 tests across ten files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+Local checks: **88 tests across twelve files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
 
 ## Browser preview verification
 
@@ -46,3 +46,7 @@ The Playwright CDN retry still returned invalid ZIP content. The previously down
 ## Live market quote integration
 
 The deployed endpoint returned actual BTC/ETH testnet marks, best bids/asks, pool addresses and index oracle timestamps. The rendered landing page displayed those observations as live. 78 tests across ten files pass, with cache, malformed/invalid mark, stale timestamp, partial outage, wrong-network and rendered stale-state coverage. Source outages retain the last valid observation and time, with a stale label. No quote check submits a trade. [Integration detail](../docs/LIVE_MARKETS.md).
+
+## Trading access and signing qualification
+
+Ten new regression cases exercise wallet-only access checks, blocked setup conditions, positive read-only access, wrong-chain refusal, RPC failure, report expiry and changed-market cancellation, failed FOK simulation, insufficient operator gas and a close signing past its position check. All 88 tests across twelve files pass. These checks use controlled transports and do not establish a real testnet order. Actual entry/close hashes and matching fills remain pending.

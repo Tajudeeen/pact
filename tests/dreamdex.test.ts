@@ -46,18 +46,24 @@ function intent(): Intent {
   };
 }
 function adapter() {
-  const simulateContract = vi.fn(async () => ({}));
-  const prepareTransactionRequest = vi.fn(async (request: unknown) => request);
+  const simulateContract = vi.fn(async () => ({ result: [true, 1n] }));
+  const prepareTransactionRequest = vi.fn(async (request: object) => ({
+    ...request,
+    maxFeePerGas: 2n,
+  }));
+  const signTransaction = vi.fn(async () => "0x01");
+  const getBalance = vi.fn(async () => 1000000000000000000n);
   const venue = Object.assign(Object.create(DreamDex.prototype) as DreamDex, {
     key: { address: "0x2222222222222222222222222222222222222222" },
     publicClient: {
       getChainId: vi.fn(async () => 50383),
       simulateContract,
       getTransactionCount: vi.fn(async () => 4),
+      getBalance,
     },
     wallet: {
       prepareTransactionRequest,
-      signTransaction: vi.fn(async () => "0x01"),
+      signTransaction,
     },
     market: vi.fn(async () => ({
       poolAddress: "0x3333333333333333333333333333333333333333",
@@ -67,9 +73,32 @@ function adapter() {
       tickSize: "1",
     })),
   });
-  return { venue, simulateContract, prepareTransactionRequest };
+  return {
+    venue,
+    simulateContract,
+    prepareTransactionRequest,
+    signTransaction,
+    getBalance,
+  };
 }
 describe("real dreamDEX adapter payload with mocked transports", () => {
+  it("refuses a non-reverting failed FOK simulation before nonce preparation or signing", async () => {
+    const x = adapter();
+    x.simulateContract.mockResolvedValue({ result: [false, 0n] });
+    await expect(x.venue.prepare(intent(), "entry")).rejects.toThrow(
+      "simulation refused",
+    );
+    expect(x.prepareTransactionRequest).not.toHaveBeenCalled();
+    expect(x.signTransaction).not.toHaveBeenCalled();
+  });
+  it("refuses to sign when the operator cannot cover the prepared gas ceiling", async () => {
+    const x = adapter();
+    x.getBalance.mockResolvedValue(19999999n);
+    await expect(x.venue.prepare(intent(), "entry")).rejects.toThrow(
+      "STT balance",
+    );
+    expect(x.signTransaction).not.toHaveBeenCalled();
+  });
   it("simulates and signs the fresh approved execution price in the actual calldata", async () => {
     const x = adapter(),
       i = intent();

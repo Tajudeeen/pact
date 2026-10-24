@@ -220,6 +220,47 @@ export function createApp(
     c.json(service.revoke(requireUser(c.get("owner")), c.req.param("id"))),
   );
   app.get("/api/accounts", (c) => c.json(service.accounts(c.get("owner"))));
+  app.get("/api/readiness", async (c) => {
+    const owner = requireUser(c.get("owner"));
+    if (c.get("mode") !== "testnet")
+      throw new Fault(
+        "WALLET_REQUIRED",
+        "Sign in with your testnet wallet to check trading access.",
+        403,
+      );
+    const market = z
+      .enum(["BTC-PERP", "ETH-PERP"])
+      .parse(c.req.query("market"));
+    if (!service.liveEnabled || !service.venue?.readiness)
+      throw new Fault(
+        "TESTNET_DISABLED",
+        "Testnet access checks are not configured.",
+        503,
+      );
+    let timer: ReturnType<typeof setTimeout>;
+    try {
+      return c.json(
+        await Promise.race([
+          service.venue.readiness(owner, market),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(
+                  new Fault(
+                    "READINESS_TIMEOUT",
+                    "Testnet access check timed out. No readiness is claimed. Try again.",
+                    503,
+                  ),
+                ),
+              12000,
+            );
+          }),
+        ]),
+      );
+    } finally {
+      clearTimeout(timer!);
+    }
+  });
   app.post("/api/accounts", async (c) => {
     const { mode, scenario } = z
       .object({

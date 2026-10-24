@@ -722,6 +722,14 @@ export class PactService {
         ...(await this.venue!.prepare(i, "close")),
         recordedAt: this.now(),
       };
+      if (this.now() - position.observedAt > 5000) {
+        this.attention(
+          i,
+          "close_check_expired",
+          "Close signing outlasted the position check. Nothing broadcast. Inspect the position in dreamDEX, then check recovery.",
+        );
+        return i;
+      }
       const saved = this.store.atomic(() => {
         const result = this.store.db
           .prepare("INSERT OR IGNORE INTO actions VALUES(?,?,?,?)")

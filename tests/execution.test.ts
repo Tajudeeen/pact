@@ -8,6 +8,25 @@ import { setup, folders, cleanupExecution } from "./helpers/execution";
 afterEach(cleanupExecution);
 
 describe("testnet execution and recovery without network calls", () => {
+  it("does not persist or broadcast a close signed after its position observation expires", async () => {
+    const x = setup();
+    await x.open();
+    x.delaySigning(5001);
+    await x.service.close("owner", x.intent.id);
+    expect(x.intent.state).toBe("attention");
+    expect(x.intent.events.at(-1)?.type).toBe("close_check_expired");
+    expect(x.service.action(x.intent, "close")).toBeUndefined();
+    expect(x.sends).toBe(1);
+    expect(x.service.exposure("owner", x.account.id).reserved).toBe(
+      x.intent.decision.plannedLoss,
+    );
+    x.delaySigning(0);
+    await x.service.recover("owner", x.intent.id);
+    expect(x.intent.state).toBe("open");
+    await x.service.close("owner", x.intent.id);
+    expect(x.intent.state).toBe("closing");
+    expect(x.sends).toBe(2);
+  });
   it("does not broadcast when signing crosses the approval deadline even with a fresh quote", async () => {
     const x = setup();
     await x.approve();
