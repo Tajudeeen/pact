@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-24",
+  "applicationCommit": "883dab5beb73d6921c894ff6b54f68736b8758b1",
+  "cloudflareDeployment": "362032d219114c8a9d034f9abf361c0d",
+  "environment": "deployed Cloudflare practice",
+  "orderId": "4e07ec6d-3220-4770-9cf5-3cc6c3b2d6c1",
+  "checks": [
+    {
+      "name": "late arrival",
+      "result": "passed",
+      "observed": "OUTSIDE_ENTRY, no action prepared"
+    },
+    {
+      "name": "standard account sizing",
+      "result": "passed",
+      "observed": "0.00678 BTC, limit 67735.2, planned risk 9.99, practice fee reserve 0"
+    },
+    {
+      "name": "expired preview",
+      "result": "passed",
+      "observed": "Expired decision could not be approved"
+    },
+    {
+      "name": "fresh approval and alarm-driven fill",
+      "result": "passed",
+      "observed": "approval, simulated outbound action and simulated fill observed"
+    },
+    {
+      "name": "close",
+      "result": "passed",
+      "observed": "Close reconciled, two simulated fills at the entry price"
+    },
+    {
+      "name": "reload persistence",
+      "result": "passed",
+      "observed": "Closed state and four-event trail retained"
+    },
+    {
+      "name": "receipt download",
+      "result": "passed",
+      "observed": "Browser download event completed"
+    },
+    {
+      "name": "live public quotes",
+      "result": "passed",
+      "observed": "BTC/ETH marks and timestamps changed on successive workspace observations"
+    },
+    {
+      "name": "deployed network identity",
+      "result": "passed",
+      "observed": "chain 50383, original operator 0x2E33B949b7a8C49b5156d666ed614F12fb798235, mainnetEnabled false, mainnetStatus blocked"
+    },
+    {
+      "name": "local Worker runtime",
+      "result": "unavailable",
+      "observed": "uv_interface_addresses returned Unknown system error 1"
+    }
+  ],
+  "automatedTests": {
+    "passed": 133,
+    "files": 18,
+    "scope": "Controlled chain transports and local UI/API/storage checks"
+  },
+  "actualBlockchainOrdersPlaced": 0,
+  "limits": [
+    "Practice observations do not prove funded testnet execution.",
+    "Wallet signing and phone wallet flow remain unqualified.",
+    "Independent receipt checking is tested with controlled chain data and needs a genuine live receipt.",
+    "Mainnet, security audit, complete cost attribution and reduce-only exits remain unqualified."
+  ]
+}
