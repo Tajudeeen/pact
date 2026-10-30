@@ -137,6 +137,29 @@ export function OrderPage() {
               </p>
             </div>
           </div>
+          <section className="panel" aria-label="Transaction evidence milestones">
+            <div className="section-top">
+              <h2>Transaction milestones</h2>
+              <Badge tone="neutral">{i.mode === "replay" ? "SIMULATION" : "CHAIN EVIDENCE"}</Badge>
+            </div>
+            <p className="tiny muted">
+              Status comes from recorded actions and observed evidence. A hash alone does not prove a fill.
+            </p>
+            <ol className="timeline">
+              {[
+                ["Approval recorded", true],
+                ["Entry hash recorded", !!i.txHash && i.mode === "testnet"],
+                ["Entry chain proof observed", i.mode === "testnet" && !!i.chainProofs?.some(p => p.role === "entry")],
+                ["Close hash recorded", !!i.closeHash && i.mode === "testnet"],
+                ["Close proof and flat state", i.mode === "testnet" && i.state === "closed" && !!i.chainProofs?.some(p => p.role === "close")],
+              ].map(([label, complete]) => (
+                <li key={String(label)}>
+                  <span className="timeline-dot" />
+                  <div><strong>{String(label)}</strong><p>{complete ? "Recorded" : "Not established"}</p></div>
+                </li>
+              ))}
+            </ol>
+          </section>
           <div className="order-layout">
             <section className="panel">
               <div className="section-top">
