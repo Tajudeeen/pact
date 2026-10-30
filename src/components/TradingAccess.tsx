@@ -137,6 +137,13 @@ export function TradingAccess() {
                     Math.floor(age / 1000) +
                     " seconds ago. This does not approve or guarantee an order."}
               </p>
+              {!stale && !result.ready && (
+                <div className="callout" role="note">
+                  <strong>Resolve blockers before publishing a testnet setup.</strong>
+                  <p>Check the failed rows below. For operator permissions and margin, open DreamDEX and use the same owner account. Fund operator gas separately, then rerun this read-only report.</p>
+                  <a href="https://app.testnet.dreamdex.io" target="_blank" rel="noreferrer">Open DreamDEX testnet</a>
+                </div>
+              )}
               <ul className="access-checks">
                 {result.checks.map((c) => (
                   <li key={c.id} data-status={c.status}>
