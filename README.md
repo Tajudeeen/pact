@@ -10,6 +10,19 @@ Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dre
 
 > **Qualification status, October 29, 2026:** Practice flows and testnet infrastructure are implemented, but the last documented evidence contains **zero real DreamDEX orders**. A live, funded entry and close, matching on-chain fills, and an independently verified receipt are **still pending**. Do not treat simulations, read-only chain probes or mocked adapter tests as live trading proof. Mainnet trading is deliberately blocked.
 
+## Trading qualification enhancements (review branch)
+
+This branch adds safeguards and evidence UX without enabling automated trades:
+
+- **Fresh setup drafts:** An expired setup offers an explicit *Create fresh setup* action. The original setup remains unchanged. The new form preloads old terms for review, fetches current quotes, defaults to practice unless an authorized testnet session is present, and requires manual publication and new consent.
+- **Readiness actions:** The existing owner-scoped, read-only access check now provides next steps for failed operator permissions, margin and gas conditions. An expired readiness report must be refreshed.
+- **Evidence milestones:** Order pages distinguish approval, hashes and actual chain proofs. Missing proof is always shown as unestablished, never successful.
+- **Repeatable checks:** `pnpm verify` executes the test suite, types, builds, release gates and read-only doctor in order. A timestamped JSON report is saved under ignored `.data/verification/`. Failure stops the sequence; no trades are sent.
+- **Candidate evidence manifest:** `pnpm evidence:collect /path/to/pact-receipt.json` writes an intentionally **unverified** sanitized receipt summary under ignored `.data/evidence/`. It refuses to mark missing proof as complete and requires an independent `pnpm run verify:receipt` chain check before a judge-facing claim.
+
+These edits have not been regression-tested or deployed in this chat. Do not claim funded testnet execution until entry, fills, close and flat-position observations exist.
+
+
 ## Why Pact?
 
 A group shares an entry range, stop and target. Someone arriving after price has moved may need to skip it. Another member inside the entry window may be able to trade a different amount, based on their available margin and personal risk limits. Pact makes those decisions explicit before the user approves anything.
