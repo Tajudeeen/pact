@@ -22,6 +22,18 @@ The bounty's live-order requirement is still pending. A practice receipt or mock
 
 Mainnet is blocked in this release. [Execution qualification and release gates](docs/MAINNET.md) document implemented defenses, independent receipt verification and the evidence still required before a future mainnet pilot.
 
+## Trading qualification enhancements (review branch)
+
+This branch adds safeguards and evidence UX without enabling automated trades:
+
+- **Fresh setup drafts:** An expired setup offers an explicit *Create fresh setup* action. The original setup remains unchanged. The new form preloads old terms for review, fetches current quotes, defaults to practice unless an authorized testnet session is present, and requires manual publication and new consent.
+- **Readiness actions:** The existing owner-scoped, read-only access check now provides next steps for failed operator permissions, margin and gas conditions. An expired readiness report must be refreshed.
+- **Evidence milestones:** Order pages distinguish approval, hashes and actual chain proofs. Missing proof is always shown as unestablished, never successful.
+- **Repeatable checks:** `pnpm verify` executes the test suite, types, builds, release gates and read-only doctor in order. A timestamped JSON report is saved under ignored `.data/verification/`. Failure stops the sequence; no trades are sent.
+- **Candidate evidence manifest:** `pnpm evidence:collect /path/to/pact-receipt.json` writes an intentionally **unverified** sanitized receipt summary under ignored `.data/evidence/`. It refuses to mark missing proof as complete and requires an independent `pnpm run verify:receipt` chain check before a judge-facing claim.
+
+These edits have not been regression-tested or deployed in this chat. Do not claim funded testnet execution until entry, fills, close and flat-position observations exist.
+
 ## Who it is for
 
 Trading communities sharing structured setups, and members who need an account-specific decision rather than copying someone else's quantity or chasing an expired entry.
