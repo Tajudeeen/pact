@@ -18,11 +18,11 @@ Run `pnpm test tests/execution.test.ts tests/dreamdex.test.ts tests/recovery-ui.
 
 ## Actual testnet proof
 
-Pending. The submission is not ready until this section links actual entry/close hashes and a recorded demo. Do not represent practice receipts as testnet evidence.
+**Pending as of the last recorded evidence.** The MVP must link real Tokyo entry and close transaction hashes, matching decoded fill events, a final flat-position read, and an independently verified sanitized receipt. Record the demo only after those outcomes can be shown. Practice receipts and read-only network probes are not substitutes. See [the qualification tracker](https://github.com/Tajudeeen/pact/issues/1).
 
 ## Hard questions
 
 - Does the account selector actually change the account being approved? Changing it clears the old preview and consent. Late responses are discarded.
 - What happens after a missing response? The intent remains reserved and the persisted action is reconciled, without signing another order.
 - Are the stops exchange-native? No. Linked keys cannot arm native stops. Monitored exits have explicit availability and close-path limits.
-- Is the result after all costs? Net testnet PnL remains incomplete until actual funding and gas attribution is implemented.
+- Is the result after all costs? The implemented ledger can attribute fees, rebates, funding and realized USDso PnL when canonical bank-event coverage is complete. Until a real filled lifecycle is qualified, no actual net result is established. Native STT gas is separately reported, not converted to USDso.
