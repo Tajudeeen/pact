@@ -28,6 +28,7 @@ export function PlanPage() {
     api<Plan>("/plans/" + encodeURIComponent(id), { signal: s }),
   );
   const [copied, setCopied] = useState(false);
+  const expiredPlan = !!plan && Date.now() >= plan.expiresAt;
   return (
     <>
       <Link to="/app" className="back">
@@ -64,6 +65,15 @@ export function PlanPage() {
               {copied ? "Copied" : "Copy setup link"}
             </button>
           </div>
+          {expiredPlan && (
+            <div className="panel" role="status" style={{ marginBottom: 20 }}>
+              <h2>Entry window closed</h2>
+              <p className="muted">The original terms remain immutable. Create an editable draft, check current prices, and explicitly publish a new setup.</p>
+              <Link className="button primary" to="/app/new" state={{ clonePlan: plan }}>
+                Create fresh setup <ArrowRight size={16} />
+              </Link>
+            </div>
+          )}
           <div className="plan-layout">
             <section className="panel setup-details">
               <div className="section-top">

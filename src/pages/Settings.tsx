@@ -3,7 +3,7 @@ import { TradingAccess } from "../components/TradingAccess";
 import { EntryControl } from "../components/EntryControl";
 import { requireTokyo, confirmWallet } from "../wallet";
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import {
   Copy,
   ArrowUpRight,
@@ -119,9 +119,11 @@ export function Rules() {
 }
 export function NewPlan() {
   const { session, config } = useApp(),
-    navigate = useNavigate();
-  const [market, setMarket] = useState("BTC-PERP"),
-    [mode, setMode] = useState("replay"),
+    navigate = useNavigate(),
+    location = useLocation();
+  const source = (location.state as { clonePlan?: Plan } | null)?.clonePlan;
+  const [market, setMarket] = useState(source?.market ?? "BTC-PERP"),
+    [mode, setMode] = useState(source?.mode === "testnet" && config?.testnetEnabled && session?.mode === "testnet" ? "testnet" : "replay"),
     [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -161,6 +163,7 @@ export function NewPlan() {
       </PageTitle>
       <StartGate>
         <form className="panel form-panel" onSubmit={(e) => void submit(e)}>
+          {source && <div className="callout" role="note">Draft copied from an earlier setup. Check all prices, risk terms and the environment against the live market. Publishing creates a new plan and digest. No trade is approved automatically.</div>}
           <LivePrice market={market} />
           <p className="tiny muted">
             Live mark is a reference. Enter and approve your own setup terms.
@@ -173,6 +176,7 @@ export function NewPlan() {
                 minLength={4}
                 maxLength={80}
                 placeholder="BTC, wait for the pullback"
+                defaultValue={source ? source.title + " (new setup)" : undefined}
               />
             </Field>
             <Field label="Environment">
@@ -199,7 +203,7 @@ export function NewPlan() {
               </select>
             </Field>
             <Field label="Direction">
-              <select name="direction">
+              <select name="direction" defaultValue={source?.direction ?? "long"}>
                 <option value="long">Long</option>
                 <option value="short">Short</option>
               </select>
@@ -213,6 +217,7 @@ export function NewPlan() {
               <Field label={l} key={n}>
                 <input
                   name={n}
+                  defaultValue={source?.[n as "entryMin" | "entryMax" | "stop" | "target"]}
                   required
                   inputMode="decimal"
                   placeholder={market === "BTC-PERP" ? "67000" : "2500"}
@@ -230,6 +235,7 @@ export function NewPlan() {
           <Field label="Rationale">
             <textarea
               name="rationale"
+              defaultValue={source?.rationale}
               maxLength={1000}
               rows={4}
               placeholder="What makes this setup worth checking, and what invalidates it?"
