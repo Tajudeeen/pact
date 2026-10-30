@@ -27,7 +27,8 @@
     "smoke:cloudflare": "node scripts/cloudflare-smoke.mjs",
     "types:cloudflare": "wrangler types cloudflare/env.d.ts --strict-vars=false --include-runtime=false",
     "check:cloudflare": "tsc --noEmit -p cloudflare/tsconfig.json",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "evidence:collect": "node scripts/collect-evidence.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
