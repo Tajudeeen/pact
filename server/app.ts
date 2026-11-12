@@ -10,7 +10,6 @@ import { receiptOf } from "../src/core/receipt";
 import type { Scenario } from "../src/core/types";
 import type { MarketBoard } from "../src/core/markets";
 import { RELEASE } from "./release";
-import { NetworkCheckError } from "./dreamdex";
 const id = z.string().min(1).max(150);
 export function createApp(
   service: PactService,
@@ -164,18 +163,6 @@ export function createApp(
         }),
       ]);
       return c.json({ ...status, readOnly: true });
-    } catch (error) {
-      if (error instanceof NetworkCheckError)
-        return c.json(
-          {
-            code: "NETWORK_CHECK_FAILED",
-            stage: error.stage,
-            message:
-              "Tokyo testnet is configured, but its read-only network check failed. No order was sent.",
-          },
-          503,
-        );
-      throw error;
     } finally {
       clearTimeout(timer!);
     }
