@@ -163,7 +163,19 @@ export function NewPlan() {
       </PageTitle>
       <StartGate>
         <form className="panel form-panel" onSubmit={(e) => void submit(e)}>
-          {source && <div className="callout" role="note">Draft copied from an earlier setup. Check all prices, risk terms and the environment against the live market. Publishing creates a new plan and digest. No trade is approved automatically.</div>}
+          {source && (
+            <div className="callout" role="note">
+              <div>
+                <strong>Fresh draft copied from an earlier setup.</strong>
+                <p className="tiny muted">
+                  The original setup stays unchanged. Entry minimum and maximum
+                  are blank on purpose. Check the live quote, enter a new range,
+                  and review the stop, target, risk terms and environment before
+                  publishing. Publishing does not approve or place a trade.
+                </p>
+              </div>
+            </div>
+          )}
           <LivePrice market={market} />
           <p className="tiny muted">
             Live mark is a reference. Enter and approve your own setup terms.
@@ -217,10 +229,20 @@ export function NewPlan() {
               <Field label={l} key={n}>
                 <input
                   name={n}
-                  defaultValue={source?.[n as "entryMin" | "entryMax" | "stop" | "target"]}
+                  defaultValue={
+                    source && (n === "entryMin" || n === "entryMax")
+                      ? undefined
+                      : source?.[n as "entryMin" | "entryMax" | "stop" | "target"]
+                  }
                   required
                   inputMode="decimal"
-                  placeholder={market === "BTC-PERP" ? "67000" : "2500"}
+                  placeholder={
+                    source && (n === "entryMin" || n === "entryMax")
+                      ? "Enter a fresh price"
+                      : market === "BTC-PERP"
+                        ? "67000"
+                        : "2500"
+                  }
                 />
               </Field>
             ))}

@@ -204,7 +204,9 @@ function PersonalCheck({ plan }: { plan: Plan }) {
   const d = preview?.decision,
     matching = accounts.value?.filter((a) => a.mode === plan.mode) ?? [],
     account = matching.find((a) => a.id === accountId),
-    expired = !!preview && now >= preview.expiresAt;
+    expired = !!preview && now >= preview.expiresAt,
+    needsFreshSetup =
+      d?.reason === "PLAN_EXPIRED" || d?.reason === "OUTSIDE_ENTRY";
   return (
     <>
       <div className="eyebrow">YOUR ACCOUNT. YOUR TERMS.</div>
@@ -374,6 +376,25 @@ function PersonalCheck({ plan }: { plan: Plan }) {
                 A refusal protects the terms you chose. No order was prepared or
                 sent.
               </p>
+              {needsFreshSetup && (
+                <div className="callout" role="note">
+                  <div>
+                    <strong>Review the market and set a new entry range.</strong>
+                    <p className="tiny muted">
+                      The old setup stays unchanged. Pact will copy its context
+                      into a draft, but you must enter fresh prices and publish
+                      new terms before checking again.
+                    </p>
+                  </div>
+                  <Link
+                    className="button primary full"
+                    to="/app/new"
+                    state={{ clonePlan: plan }}
+                  >
+                    Create fresh setup <ArrowRight size={16} />
+                  </Link>
+                </div>
+              )}
             </>
           )}
         </div>
