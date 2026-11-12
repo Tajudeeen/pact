@@ -64,6 +64,12 @@ const abi = [
   ]),
   ...contractErrorsAbi,
 ];
+export class NetworkCheckError extends Error {
+  constructor(readonly stage: string) {
+    super("Tokyo testnet network check failed during " + stage + ".");
+    this.name = "NetworkCheckError";
+  }
+}
 export class DreamDex implements Venue {
   async settlement(intent: Intent) {
     const entry = intent.chainProofs?.find((p) => p.role === "entry"),
@@ -166,21 +172,38 @@ export class DreamDex implements Venue {
     return m;
   }
   async network() {
-    const [chainId, markets] = await Promise.all([
+    const read = async <T>(stage: string, action: () => Promise<T>) => {
+      try {
+        return await action();
+      } catch {
+        throw new NetworkCheckError(stage);
+      }
+    };
+    const chainId = await read("chain_id", () =>
       this.publicClient.getChainId(),
+    );
+    if (chainId !== CHAIN_ID) throw new NetworkCheckError("chain_id");
+    const markets = await read("market_discovery", () =>
       this.sdk.client.listPerpMarkets(),
-    ]);
-    if (chainId !== CHAIN_ID || !markets.length)
-      throw new Error("Testnet network or market discovery unavailable.");
-    const market = await this.market(`${markets[0].baseSymbol}-PERP`);
-    const state = await this.sdk.client.getPerpState(market.poolAddress);
-    const head = await this.publicClient.getBlockNumber();
+    );
+    if (!markets.length) throw new NetworkCheckError("market_discovery");
+    const market = await read("market_wiring", () =>
+      this.market(`${markets[0].baseSymbol}-PERP`),
+    );
+    const state = await read("perp_state", () =>
+      this.sdk.client.getPerpState(market.poolAddress),
+    );
+    const head = await read("block_height", () =>
+      this.publicClient.getBlockNumber(),
+    );
     const bankLogBlock = head > 0n ? head - 1n : 0n;
-    const bankLogs = await this.publicClient.getLogs({
-      address: market.marginBank,
-      fromBlock: bankLogBlock,
-      toBlock: bankLogBlock,
-    });
+    const bankLogs = await read("bank_logs", () =>
+      this.publicClient.getLogs({
+        address: market.marginBank,
+        fromBlock: bankLogBlock,
+        toBlock: bankLogBlock,
+      }),
+    );
     return {
       chainId,
       marketCount: markets.length,
