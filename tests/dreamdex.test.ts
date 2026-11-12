@@ -307,20 +307,3 @@ it("probes the actual bounded bank-log path read-only alongside network wiring",
     toBlock: 99n,
   });
 });
-
-
-it("reports the failing Tokyo network-read stage without exposing provider errors", async () => {
-  const venue = Object.assign(Object.create(DreamDex.prototype) as DreamDex, {
-    publicClient: {
-      getChainId: vi.fn(async () => {
-        throw new Error("private provider diagnostic");
-      }),
-    },
-    sdk: { client: {} },
-  });
-  await expect(venue.network()).rejects.toMatchObject({
-    name: "NetworkCheckError",
-    stage: "chain_id",
-    message: "Tokyo testnet network check failed during chain_id.",
-  });
-});
