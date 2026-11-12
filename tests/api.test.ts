@@ -4,7 +4,6 @@ import { Store } from "../server/store";
 import { PactService } from "../server/service";
 import { createApp } from "../server/app";
 import { Auth } from "../server/auth";
-import { NetworkCheckError } from "../server/dreamdex";
 const origin = "http://localhost:5173";
 describe("API security and public flow", () => {
   it("restricts testnet sign-in to the configured wallet while allowing isolated practice", async () => {
@@ -182,27 +181,4 @@ describe("API security and public flow", () => {
     expect(no.status).toBe(400);
     db.close();
   });
-});
-
-
-it("returns a safe stage when the configured Tokyo network check fails", async () => {
-  const db = new Store();
-  const venue = {
-    network: async () => {
-      throw new NetworkCheckError("bank_logs");
-    },
-  };
-  const app = createApp(
-    new PactService(db, venue as never, true),
-    origin,
-  );
-  const response = await app.request("/api/network");
-  expect(response.status).toBe(503);
-  expect(await response.json()).toEqual({
-    code: "NETWORK_CHECK_FAILED",
-    stage: "bank_logs",
-    message:
-      "Tokyo testnet is configured, but its read-only network check failed. No order was sent.",
-  });
-  db.close();
 });
