@@ -10,11 +10,6 @@ export interface EvmWallet {
   icon?: string;
   provider: EvmProvider;
 }
-declare global {
-  interface Window {
-    ethereum?: EvmProvider;
-  }
-}
 export const TOKYO_CHAIN_ID = "0xc4cf";
 
 /** Discover injected wallets using EIP-6963, with a legacy EIP-1193 fallback. */
@@ -41,12 +36,13 @@ export async function discoverEvmWallets(): Promise<EvmWallet[]> {
   await new Promise((resolve) => window.setTimeout(resolve, 300));
   window.removeEventListener("eip6963:announceProvider", announce);
 
-  if (wallets.size === 0 && window.ethereum) {
+  const legacyProvider = (window as Window & { ethereum?: EvmProvider }).ethereum;
+  if (wallets.size === 0 && legacyProvider) {
     wallets.set("legacy-injected", {
       id: "legacy-injected",
       name: "Browser wallet",
       rdns: "",
-      provider: window.ethereum,
+      provider: legacyProvider,
     });
   }
   return [...wallets.values()].sort((a, b) => a.name.localeCompare(b.name));
