@@ -15,7 +15,7 @@ export function Mark() {
       <span className="wordmark" role="img" aria-label="Pact symbol">
         <img
           className="pact-symbol"
-          src="/brand/pact-mark.svg"
+          src={import.meta.env.BASE_URL + "brand/pact-mark.svg"}
           alt=""
           width="64"
           height="49"
@@ -26,12 +26,12 @@ export function Mark() {
         <span className="dreamdex-signature">
           <img
             className="dreamdex-symbol"
-            src="/brand/dreamdex-mark.svg"
+            src={import.meta.env.BASE_URL + "brand/dreamdex-mark.svg"}
             alt=""
           />
           <img
             className="dreamdex-wordmark"
-            src="/brand/dreamdex-wordmark.svg"
+            src={import.meta.env.BASE_URL + "brand/dreamdex-wordmark.svg"}
             alt="dreamDEX"
           />
         </span>
