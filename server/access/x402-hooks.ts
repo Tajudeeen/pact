@@ -37,26 +37,9 @@ interface X402HttpRequestContext {
   method?: string;
 }
 
-interface X402TransportContext {
-  request?: X402HttpRequestContext;
-}
-
-interface X402PaymentPayload {
-  resource?: { url?: string };
-  payload?: {
-    signedTransaction?: {
-      version?: number;
-      header?: { sender?: string };
-    };
-  };
-}
-
-interface X402PaymentRequirements {
-  scheme: string;
-  network: AccessContext["network"];
-  amount: string;
-  asset: string;
-  payTo: string;
+interface X402SignedTransaction {
+  version?: number;
+  header?: { sender?: string };
 }
 
 interface X402SettleContext {
@@ -133,10 +116,13 @@ function decodeOwnerProof(value: string | undefined): unknown | null {
   }
 }
 
-function signedTransactionFrom(payload: X402SettleContext["paymentPayload"]) {
-  const transaction = payload.payload?.signedTransaction as X402PaymentPayload["payload"] extends { signedTransaction?: infer T } ? T : never;
+function signedTransactionFrom(
+  payload: X402SettleContext["paymentPayload"],
+): X402SignedTransaction | null {
+  const raw = payload.payload.signedTransaction;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const transaction = raw as X402SignedTransaction;
   if (
-    !transaction ||
     transaction.version !== 1 ||
     !transaction.header ||
     typeof transaction.header.sender !== "string" ||
