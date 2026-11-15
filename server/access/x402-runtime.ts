@@ -83,9 +83,19 @@ export async function createPactX402Runtime(
   config: PactX402RouteConfig,
   loadModules: PactX402ModuleLoader = loadX402Modules,
 ) {
-  if (!config.facilitatorUrl.trim())
-    throw new Error("A Concordium-capable x402 facilitator URL is required.");
-  if (config.facilitatorAuthToken.length < 32)
+  let facilitatorUrl: URL;
+  try {
+    facilitatorUrl = new URL(config.facilitatorUrl);
+  } catch {
+    throw new Error("A valid Concordium x402 facilitator URL is required.");
+  }
+  if (
+    (facilitatorUrl.protocol !== "https:" &&
+      !["localhost", "127.0.0.1", "[::1]"].includes(facilitatorUrl.hostname)) ||
+    facilitatorUrl.username ||
+    facilitatorUrl.password
+  ) throw new Error("The facilitator URL must use HTTPS outside localhost and cannot contain credentials.");
+  if (config.facilitatorAuthToken.trim().length < 32)
     throw new Error("A 32-character minimum facilitator bearer token is required.");
   if (
     !config.routePath.startsWith("/api/") ||
