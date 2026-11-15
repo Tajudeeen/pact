@@ -27,7 +27,7 @@ corepack prepare pnpm@11.25.0 --activate
 The package versions below are the documented stable versions checked for this branch. Add them exactly and commit the generated lockfile:
 
 ```powershell
-pnpm add -E @x402/concordium@2.31.0 @x402/core@2.31.0 @x402/hono@2.31.0 @concordium/web-sdk@12.0.2 @concordium/browser-wallet-api-helpers@3.3.0
+pnpm add -E @x402/concordium@2.31.0 @x402/core@2.31.0 @x402/hono@2.31.0 @x402/fetch@2.31.0 @concordium/web-sdk@12.0.2 @concordium/browser-wallet-api-helpers@3.3.0
 ```
 
 Do not add any private key to source code or a committed env file.
@@ -99,7 +99,9 @@ The agentWallet private key belongs only in the buyer-agent runtime. The facilit
 
 For every blocked case, verify that no protected bytes are returned.
 
-## 7. Demo evidence
+## 7. Buyer agent: use `createPactBuyerFetch` only in the server-side buyer-agent process. Load the registered `agentWallet` private key from a secret store. Call the challenge endpoint first, sign the returned message with the owner wallet, then call the protected resource using `pactBuyerHeaders`. The x402 fetch wrapper handles the 402/payment retry and signs the sponsored transaction from the agentWallet.
+
+8. Demo evidence
 
 - [ ] First request returns an owner-signature challenge, no resource bytes.
 - [ ] Owner signs the exact request-bound message in Concordium Wallet.
@@ -116,4 +118,4 @@ For every blocked case, verify that no protected bytes are returned.
 
 The branch now contains the Pact Access landing, owner-signature message/verifier adapter, CIS-8004 binding adapter, server-issued challenge flow, SQLite request/challenge repository, fail-closed pipeline, state machine, and tests.
 
-The branch now includes concrete dynamic-loading adapters for the Concordium SDK, the official Agent Registry MCP lookup, x402 Hono middleware construction, and x402 lifecycle hooks. The PC still needs to install the pinned packages and generate the lockfile, mount the challenge and seller routes behind the app's origin/session/rate-limit middleware, connect the browser wallet helper, configure the testnet registry ID and facilitator, add the buyer-agent signer/runtime, and produce real testnet transaction evidence. If a facilitator failure has no transaction hash, the request remains pending for manual review. No live transaction or deployment is claimed.
+The branch now includes dynamic-loading adapters for the Concordium SDK, official Agent Registry MCP lookup, x402 Hono middleware, x402 lifecycle hooks, finality-based reconciliation, challenge/resource routes, browser owner signing, and a server-side buyer-agent payment wrapper. The PC still needs to install the pinned packages and generate the lockfile, mount the routes behind the app's origin/session/rate-limit middleware, configure the testnet registry ID and facilitator, load the agentWallet secret into the buyer runtime, and produce real testnet transaction evidence. If a facilitator failure has no transaction hash, the request remains pending for manual review. No live transaction or deployment is claimed.
