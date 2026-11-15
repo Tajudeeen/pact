@@ -95,7 +95,7 @@ The agentWallet private key belongs only in the buyer-agent runtime. The facilit
 - x402 amount, asset, or recipient mismatch;
 - pending, failed, or timed-out settlement;
 - facilitator/node outage;
-- duplicate request and duplicate delivery attempt.
+- duplicate request and duplicate delivery attempt; confirm delivery state and receipt commit atomically.
 
 For every blocked case, verify that no protected bytes are returned.
 
