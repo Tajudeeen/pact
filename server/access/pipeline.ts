@@ -416,15 +416,34 @@ export class AccessPipeline<T> {
   }
 
   /** Keep ambiguous x402 settlement failures pending for explicit reconciliation. */
-  async recordExternalSettlementFailure(requestId: string, reasonCode: string): Promise<void> {
+  async recordExternalSettlementFailure(
+    requestId: string,
+    reasonCode: string,
+    transactionReference?: string,
+  ): Promise<void> {
     const state = await this.requireState(requestId);
     if (state.state !== "payment_pending")
       throw new AccessPipelineError("Only a pending payment can be reconciled.", "INVALID_STATE");
+
+    if (transactionReference) {
+      if (state.paymentReference && state.paymentReference !== transactionReference)
+        throw new AccessPipelineError("A different settlement reference is already recorded.", "PAYMENT_NOT_CONFIRMED");
+      if (!state.paymentReference) {
+        await this.deps.requests.transition(
+          requestId,
+          "payment_pending",
+          "payment_reference_recorded",
+          { paymentReference: transactionReference },
+        );
+      }
+    }
+
     await this.deps.audit.append({
       requestId,
       state: "payment_pending",
       at: this.now().toISOString(),
       reasonCode: reasonCode.slice(0, 80),
+      ...(transactionReference ? { paymentReference: transactionReference } : {}),
     });
   }
 
