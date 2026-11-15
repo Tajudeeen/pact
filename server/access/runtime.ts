@@ -8,7 +8,11 @@ import type {
 } from "./contracts";
 import { AccessChallengeIssuer } from "./challenge";
 import { ConcordiumAccountSignatureVerifier } from "./account-signature-verifier";
-import { ConcordiumGrpcAccountInfoReader, ConcordiumSdkMessageSignatureChecker } from "./concordium-node";
+import {
+  ConcordiumGrpcAccountInfoReader,
+  ConcordiumGrpcSettlementReconciler,
+  ConcordiumSdkMessageSignatureChecker,
+} from "./concordium-node";
 import { ConcordiumMcpAgentResolver } from "./concordium-registry-mcp";
 import { Cis8004OwnerBindingVerifier } from "./agent-registry-binding";
 import { AccessPipeline } from "./pipeline";
@@ -56,8 +60,10 @@ export async function createPactAccessRuntime(
   const registry = new ConcordiumMcpAgentResolver({
     registryId: config.registryId,
   });
+  const nodeReader = new ConcordiumGrpcAccountInfoReader();
+  const settlementReconciler = new ConcordiumGrpcSettlementReconciler(nodeReader);
   const proof = new ConcordiumAccountSignatureVerifier(
-    new ConcordiumGrpcAccountInfoReader(),
+    nodeReader,
     new ConcordiumSdkMessageSignatureChecker(),
   );
   const ownerBinding = new Cis8004OwnerBindingVerifier(registry, config.registryId);
@@ -81,8 +87,12 @@ export async function createPactAccessRuntime(
     async settle(): Promise<SettlementResult> {
       throw new Error("Settlement is owned by the official x402 Hono middleware.");
     },
-    async reconcile(): Promise<SettlementResult> {
-      throw new Error("Settlement reconciliation adapter is not configured. Keep the resource locked.");
+    async reconcile(input): Promise<SettlementResult> {
+      return settlementReconciler.reconcile({
+        transactionReference: input.transactionReference,
+        network: input.context.network,
+        payerAccount: input.context.payerAccount,
+      });
     },
   };
 
