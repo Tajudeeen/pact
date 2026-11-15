@@ -65,7 +65,7 @@ The x402 lifecycle is wired as follows:
 - `x402ResourceServer.onAfterSettle` calls `completeExternalSettlement` with the finalized transaction reference, network, and facilitator-confirmed payer. If the persistence step fails, the hook throws an `AfterSettleAbortError` so x402 fails the HTTP settlement closed.
 - The protected Hono handler calls `deliverPaidResource`. It returns bytes only when the stored state is `paid`. If a prior request is already paid but the handler did not run, `onProtectedRequest` skips another charge and grants the handler access to complete delivery.
 
-Ambiguous settlement failures remain in `payment_pending` and are blocked from another charge until reconciliation. The current runtime intentionally fails closed because the direct Concordium transaction-reconciliation adapter is still outstanding.
+Ambiguous settlement failures remain in `payment_pending` and are blocked from another charge until reconciliation. If the facilitator returns a transaction hash, `ConcordiumGrpcSettlementReconciler` queries the testnet node with `getBlockItemStatus`. Only a finalized successful outcome can transition the request to `paid`. A committed, received, or unknown transaction remains pending. A finalized rejected transaction becomes failed. If no transaction hash was returned, automated reconciliation is impossible and the request remains locked for manual review.
 
 This keeps x402 responsible for its standard 402/verify/settle flow while Pact owns the owner gate, agentWallet binding, access state, audit, and delivery boundary.
 
