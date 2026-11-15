@@ -18,7 +18,7 @@ export interface ConcordiumMessageSignatureChecker {
     message: string,
     signature: unknown,
     accountInfo: unknown,
-  ): boolean;
+  ): boolean | Promise<boolean>;
 }
 
 function isSignaturePresentation(
@@ -73,7 +73,7 @@ export class ConcordiumAccountSignatureVerifier
     const message = accessAccountProofMessage(input.context, input.policy);
     let valid = false;
     try {
-      valid = this.signatures.verifyMessageSignature(
+      valid = await this.signatures.verifyMessageSignature(
         message,
         input.presentation.signature,
         accountInfo,

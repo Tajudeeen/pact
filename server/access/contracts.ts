@@ -72,6 +72,7 @@ export type SettlementResult =
       status: "confirmed";
       transactionReference: string;
       network: AccessContext["network"];
+      payerAccount?: string;
     }
   | { status: "pending"; transactionReference: string }
   | { status: "failed"; reason: string };

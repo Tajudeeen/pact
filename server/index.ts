@@ -6,22 +6,70 @@ import { createApp } from "./app";
 import { DreamDex } from "./dreamdex";
 import { existsSync } from "node:fs";
 import { MarketFeed, readQuotes } from "./market-feed";
-const port = Number(process.env.PORT ?? 8787),
-  origin =
-    process.env.PACT_ORIGIN ??
-    (process.env.NODE_ENV === "production"
-      ? `http://localhost:${port}`
-      : "http://localhost:5173");
-const enabled = process.env.PACT_TESTNET_TRADING === "true",
-  key = process.env.PACT_OPERATOR_PRIVATE_KEY;
+import { createPactAccessRuntime } from "./access/runtime";
+import { createPactAccessHttpRoutes } from "./access/http";
+import { FileProtectedResource } from "./access/file-resource";
+const port = Number(process.env.PORT ?? 8787);
+const origin =
+  process.env.PACT_ORIGIN ??
+  (process.env.NODE_ENV === "production"
+    ? `http://localhost:${port}`
+    : "http://localhost:5173");
+
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+
+function requiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required when PACT_ACCESS_ENABLED=true.`);
+  return value;
+}
+
+const enabled = process.env.PACT_TESTNET_TRADING === "true";
+const key = process.env.PACT_OPERATOR_PRIVATE_KEY;
 if (enabled && (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)))
   throw new Error(
     "Testnet trading requires a dedicated PACT_OPERATOR_PRIVATE_KEY. Never use the owner key.",
   );
-const store = new Store(process.env.PACT_DATABASE ?? ".data/pact.sqlite"),
-  venue = enabled ? new DreamDex(key as `0x${string}`) : null;
+
+const store = new Store(process.env.PACT_DATABASE ?? ".data/pact.sqlite");
+const venue = enabled ? new DreamDex(key as `0x${string}`) : null;
 const service = new PactService(store, venue, enabled);
 const marketFeed = new MarketFeed(() => readQuotes(() => new DreamDex()));
+
+const pactAccessEnabled = process.env.PACT_ACCESS_ENABLED === "true";
+const pactAccess = pactAccessEnabled
+  ? await createPactAccessRuntime(store, {
+      sellerId: requiredEnv("PACT_ACCESS_SELLER_ID"),
+      resourceUrl: requiredEnv("PACT_ACCESS_RESOURCE_URL"),
+      routePath: process.env.PACT_ACCESS_ROUTE ?? "/api/access/resource",
+      network: "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+      registryId: requiredEnv("CONCORDIUM_AGENT_REGISTRY_ID"),
+      registryMcpUrl: process.env.CONCORDIUM_AGENT_REGISTRY_MCP_URL,
+      facilitatorUrl: requiredEnv("X402_FACILITATOR_URL"),
+      facilitatorAuthToken: requiredEnv("X402_FACILITATOR_TOKEN"),
+      payTo: requiredEnv("PACT_SELLER_PAY_TO"),
+      amount: requiredEnv("PACT_ACCESS_PRICE_ATOMIC"),
+      asset: process.env.PACT_ACCESS_ASSET ?? "CCD",
+      description: process.env.PACT_ACCESS_DESCRIPTION ?? "Protected data resource",
+      mimeType: process.env.PACT_ACCESS_MIME_TYPE ?? "application/octet-stream",
+      resource: new FileProtectedResource(
+        process.env.PACT_ACCESS_RESOURCE_ROOT ?? ".data/protected",
+        requiredEnv("PACT_ACCESS_RESOURCE_FILE"),
+      ),
+    })
+  : null;
+
+const pactAccessRoutes = pactAccess
+  ? createPactAccessHttpRoutes(pactAccess, {
+      routePath: process.env.PACT_ACCESS_ROUTE ?? "/api/access/resource",
+      mimeType: process.env.PACT_ACCESS_MIME_TYPE ?? "application/octet-stream",
+    })
+  : undefined;
+
 const app = createApp(
   service,
   origin,
@@ -29,6 +77,12 @@ const app = createApp(
   undefined,
   undefined,
   () => marketFeed.read(),
+  pactAccessRoutes
+    ? {
+        app: pactAccessRoutes,
+        routePath: process.env.PACT_ACCESS_ROUTE ?? "/api/access/resource",
+      }
+    : undefined,
 );
 app.get("*", async (c, next) => {
   c.header(
@@ -43,15 +97,17 @@ if (existsSync("dist/index.html")) {
 }
 const server = serve({ fetch: app.fetch, hostname: "0.0.0.0", port }, () =>
   console.log(
-    `Pact listening on ${port}. Testnet execution ${enabled ? "configured" : "disabled"}.`,
+    `Pact listening on ${port}. Testnet execution ${enabled ? "configured" : "disabled"}. Pact Access ${pactAccessEnabled ? "enabled" : "disabled"}.`,
   ),
 );
 const timer = setInterval(() => void service.tick(), 1000);
 void service.tick();
+
 async function stop() {
   clearInterval(timer);
   server.close();
   await venue?.shutdown();
+  await pactAccess?.shutdown();
   store.close();
   process.exit(0);
 }

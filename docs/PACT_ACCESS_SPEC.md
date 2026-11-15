@@ -6,6 +6,10 @@ Pact Access is a proof-gated resource gateway for autonomous agents.
 
 A seller can put a paid API, dataset, MCP tool, or other digital resource behind Pact Access. Before the resource is delivered, Pact verifies the seller's configured Concordium requirement and coordinates x402 payment. The first supported requirement is deliberately narrow: prove that the active CIS-8004 owner authorized the registered agent payment wallet. The owner signs a short-lived Concordium message, and the agent pays from the on-chain `agentWallet`. No identity attributes are disclosed.
 
+### Proof boundary
+
+The first implementation is an account-control proof, not a zero-knowledge proof of a human identity attribute. It verifies a fresh signature from the active CIS-8004 owner and binds that owner to the registered `agentWallet` used by x402. It does not prove age, nationality, uniqueness, or any other personal attribute. Do not market this release as a ZK identity verifier. If a future track requires a specific human-identity predicate, add a Concordium identity-proof statement and a server-side verifier for that exact predicate before making that claim.
+
 This owner-to-agent claim is valid only when Pact verifies a fresh Concordium signature from the current active CIS-8004 owner and requires the x402 payer to match that agent's current on-chain `agentWallet`. CIS-8004 requires owner authorization and proof of control to set the payment wallet. A badge, Agent Card, or client-supplied owner address alone is not authorization.
 
 ## User promise
@@ -87,3 +91,16 @@ See [integration decisions](INTEGRATION_DECISIONS.md) for official references an
 - Under-three-minute demo: blocked request → wallet proof → payment → delivery.
 - Documentation of architecture, privacy boundary, failure behavior, and production rollout.
 - Explicitly state what is implemented, what is simulated, and what remains.
+
+
+## HTTP contract
+
+The first seller deployment exposes one challenge route and one configured protected-resource route.
+
+- `POST /api/access/challenges` accepts only `{ "buyerAgentId": "<CIS-8004 token address>" }`. Seller, resource, owner, and payer values are server configuration or live registry data, never request-body authority.
+- The response contains the server-generated `requestId`, one-time challenge, expiry, policy identifier, and exact message to sign.
+- The owner signs that exact message with Concordium Browser Wallet. The browser helper returns a base64url JSON header value containing only the account address and signature.
+- The buyer agent sends `x-pact-access-request` and `x-pact-owner-proof` to the protected resource route. Its server-side x402 fetch wrapper handles the payment-required response and retry.
+- The protected route releases the configured file only after x402 finalization is confirmed and Pact has persisted the request as paid.
+
+The challenge endpoint is covered by the existing same-origin and rate-limit middleware. The protected route is also rate-limited and remains fail-closed on missing proof, mismatched payer, or ambiguous settlement.
