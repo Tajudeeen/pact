@@ -88,11 +88,20 @@ export class AccessPipeline<T> {
     this.now = deps.now ?? (() => new Date());
   }
 
+  async requestState(requestId: string): Promise<AccessRequestState> {
+    return this.requireState(requestId);
+  }
+
   async verifyOwner(input: {
     requestId: string;
     presentation: unknown;
   }): Promise<{ status: "verified" } | { status: "denied"; reason: string }> {
     const state = await this.requireState(input.requestId);
+    // x402 retries the same protected request after the initial 402 response.
+    // Once proof is accepted, the same request remains authorized without
+    // consuming or re-verifying the one-time challenge.
+    if (["proof_verified", "payment_pending", "paid", "delivered"].includes(state.state))
+      return { status: "verified" };
     if (state.state !== "proof_required")
       throw new AccessPipelineError("Request is not waiting for an owner signature.", "INVALID_STATE");
 
@@ -156,7 +165,7 @@ export class AccessPipeline<T> {
     const context = await this.requireContext(input.requestId);
     if (input.paymentPayload.value.sender !== context.payerAccount)
       throw new AccessPipelineError("x402 sender does not match the agent's registered payment wallet.", "PAYMENT_NOT_CONFIRMED");
-    this.assertRequirement(input.requirement, context);
+    await this.assertRequirement(input.requirement, context);
     await this.deps.requests.transition(input.requestId, "proof_verified", "payment_started");
   }
 
@@ -358,6 +367,8 @@ export class AccessPipeline<T> {
   ) {
     if (!settlement.transactionReference)
       throw new AccessPipelineError("Confirmed settlement has no transaction reference.", "PAYMENT_NOT_CONFIRMED");
+    if (settlement.payerAccount && settlement.payerAccount !== context.payerAccount)
+      throw new AccessPipelineError("Facilitator-confirmed payer does not match the registered agent wallet.", "PAYMENT_NOT_CONFIRMED");
     if (settlement.network !== context.network) {
       await this.deps.requests.transition(requestId, "payment_pending", "payment_failed", {
         reason: "settlement_network_mismatch",
@@ -385,18 +396,55 @@ export class AccessPipeline<T> {
     });
   }
 
-  private assertRequirement(
+  private async assertRequirement(
     requirement: PaymentRequirement,
     context: AccessContext,
   ) {
+    // Compare the facilitator-bound requirement with the seller's server-side
+    // configuration. Non-empty fields alone are not enough to authorize a price.
+    const expected = await this.deps.payments.requirements(context);
     if (
+      requirement.network !== expected.network ||
+      requirement.resourceId !== expected.resourceId ||
+      requirement.amount !== expected.amount ||
+      requirement.asset !== expected.asset ||
+      requirement.payTo !== expected.payTo ||
       requirement.network !== context.network ||
-      requirement.resourceId !== context.resourceId ||
-      !requirement.amount.trim() ||
-      !requirement.asset.trim() ||
-      !requirement.payTo.trim()
+      requirement.resourceId !== context.resourceId
     )
-      throw new AccessPipelineError("Payment requirement does not match the server-owned access context.", "PAYMENT_NOT_CONFIRMED");
+      throw new AccessPipelineError("Payment requirement does not match the seller's configured price and resource.", "PAYMENT_NOT_CONFIRMED");
+  }
+
+  /** Keep ambiguous x402 settlement failures pending for explicit reconciliation. */
+  async recordExternalSettlementFailure(
+    requestId: string,
+    reasonCode: string,
+    transactionReference?: string,
+  ): Promise<void> {
+    const state = await this.requireState(requestId);
+    if (state.state !== "payment_pending")
+      throw new AccessPipelineError("Only a pending payment can be reconciled.", "INVALID_STATE");
+
+    if (transactionReference) {
+      if (state.paymentReference && state.paymentReference !== transactionReference)
+        throw new AccessPipelineError("A different settlement reference is already recorded.", "PAYMENT_NOT_CONFIRMED");
+      if (!state.paymentReference) {
+        await this.deps.requests.transition(
+          requestId,
+          "payment_pending",
+          "payment_reference_recorded",
+          { paymentReference: transactionReference },
+        );
+      }
+    }
+
+    await this.deps.audit.append({
+      requestId,
+      state: "payment_pending",
+      at: this.now().toISOString(),
+      reasonCode: reasonCode.slice(0, 80),
+      ...(transactionReference ? { paymentReference: transactionReference } : {}),
+    });
   }
 
   private async deny(

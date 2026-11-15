@@ -11,6 +11,7 @@ import type { Scenario } from "../src/core/types";
 import type { MarketBoard } from "../src/core/markets";
 import { RELEASE } from "./release";
 import { NetworkCheckError } from "./dreamdex";
+import type { PactAccessHttpApp } from "./access/http";
 const id = z.string().min(1).max(150);
 export function createApp(
   service: PactService,
@@ -19,6 +20,7 @@ export function createApp(
   allowedOwner?: string,
   rate = new Map<string, { at: number; count: number }>(),
   getMarkets?: () => Promise<MarketBoard>,
+  pactAccess?: { app: PactAccessHttpApp; routePath: string },
 ) {
   const auth = new Auth(service.store, origin, service.now, allowedOwner),
     app = new Hono<{
@@ -40,6 +42,20 @@ export function createApp(
         c.json({ code: "BODY_TOO_LARGE", message: "Request too large." }, 413),
     }),
   );
+  const publicApiPaths = [
+    "/api/config",
+    "/api/plans",
+    "/api/session",
+    "/api/auth/practice",
+    "/api/auth/challenge",
+    "/api/auth/verify",
+    "/api/health",
+    "/api/network",
+    "/api/markets",
+  ];
+  if (pactAccess)
+    publicApiPaths.push("/api/access/challenges", pactAccess.routePath);
+
   app.use("/api/*", async (c, next) => {
     if (
       !["GET", "HEAD", "OPTIONS"].includes(c.req.method) &&
@@ -87,17 +103,7 @@ export function createApp(
       c.set("owner", session.owner);
       c.set("mode", session.mode);
     } else if (
-      ![
-        "/api/config",
-        "/api/plans",
-        "/api/session",
-        "/api/auth/practice",
-        "/api/auth/challenge",
-        "/api/auth/verify",
-        "/api/health",
-        "/api/network",
-        "/api/markets",
-      ].includes(c.req.path) &&
+      !publicApiPaths.includes(c.req.path) &&
       !/^\/api\/plans\/[^/]+$/.test(c.req.path)
     )
       throw new Fault(
@@ -107,6 +113,7 @@ export function createApp(
       );
     await next();
   });
+  if (pactAccess) app.route("/", pactAccess.app);
   const requireUser = (owner: string | undefined) => {
     if (!owner) throw new Fault("SIGN_IN_REQUIRED", "Sign in first.", 401);
     return owner;

@@ -30,8 +30,10 @@ This repository is being reworked from its original Somnia/dreamDEX perps protot
 - New product specification: [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md).
 - Integration research and decisions: [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md).
 - The landing page now presents Pact Access. Legacy perps routes are hidden from the app entry points.
-- Concordium testnet/mainnet use canonical CAIP-2 identifiers (`ccd:4221332d34e1694168c2a0c0b3fd0f27` and `ccd:9dd9ca4d19e9393877d2c44b70f89acb`). The official `@x402/concordium` package and Concordium account-signature verification APIs are documented integration paths, not yet wired into Pact.
-- Implemented locally in the branch: request-bound owner-signature message, one-time challenge storage, Concordium account-signature verifier adapter, CIS-8004 owner/agentWallet binding adapter, fail-closed access pipeline, SQLite request/challenge persistence, sanitized audit persistence, and tests.\n- The SDK clients, live registry resolver, x402 facilitator, Hono middleware, and protected resource route are not yet wired. No testnet proof, payment, or delivery evidence is claimed until it exists and can be independently checked.
+- Concordium testnet uses `ccd:4221332d34e1694168c2a0c0b3fd0f27`. The current integration targets the official `@x402/concordium`, `@x402/core`, and `@x402/hono` 2.31.0 packages and Concordium Web SDK 12.0.2.
+- PR #9 merged the product pivot. PR #11 contains the phase-two implementation and remains a draft pending live testnet proof.
+- Implemented: Concordium SDK account verification and transaction status adapters, official Agent Registry MCP resolver, CIS-8004 owner/agentWallet binding, request-bound wallet signing, x402 Hono hooks and middleware factory, server-side buyer-agent payment wrapper, self-hosted finalization-required Concordium facilitator, finality reconciliation, SQLite state/audit persistence, and protected file resource routes.
+- The server can mount Pact Access when `PACT_ACCESS_ENABLED=true`. The facilitator still needs a separate deployment and sponsor secret, while the registry ID, seller resource, buyer-agent key, and testnet transactions need configuration and end-to-end proof.
 
 ## Initial build scope
 
@@ -54,7 +56,7 @@ This repository is being reworked from its original Somnia/dreamDEX perps protot
 
 ## Development
 
-The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current pipeline has a SQLite repository implementation and typed adapters, but is not yet mounted into the Hono app or connected to the Concordium SDK, live Agent Registry, x402 facilitator, or protected seller endpoint.
+The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current branch has a concrete runtime factory and optional server mounting. When `PACT_ACCESS_ENABLED=true`, `server/index.ts` mounts the challenge endpoint and one file-backed protected resource behind the existing origin and rate-limit middleware. The file path is server-configured, symlink-checked, and size-limited. The facilitator, registry ID, owner wallet, buyer-agent key, and seller resource still need real testnet configuration.
 
 See [integration decisions](docs/INTEGRATION_DECISIONS.md) for official SDK paths, trust boundaries, and the remaining implementation checklist.
 
