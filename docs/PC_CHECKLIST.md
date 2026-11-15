@@ -58,7 +58,7 @@ The official testnet gRPC endpoint documented by the x402 package is:
 grpc.testnet.concordium.com:20000
 ```
 
-Create a testnet seller account, a registered agent owner account, and a separate agent payment account. Create `.data/protected/` locally and place the actual dataset or resource file there. Set `PACT_ACCESS_RESOURCE_FILE` to its filename relative to that directory. Never commit the protected file unless it is intended to be public. Register the agent in the trusted CIS-8004 testnet registry, then set its `agentWallet` to the payment account. CIS-8004 requires the owner to authorize that change and the new wallet to prove control.
+Create a testnet seller account, a registered agent owner account, and a separate agent payment account. On Windows PowerShell, copy the templates with `Copy-Item .env.example .env` and `Copy-Item server\\facilitator\\.env.example server\\facilitator\\.env`. Create the protected folder with `New-Item -ItemType Directory -Force .data\\protected`. Place the actual dataset or resource file there. Set `PACT_ACCESS_RESOURCE_FILE` to its filename relative to that directory. Never commit the protected file unless it is intended to be public. Register the agent in the trusted CIS-8004 testnet registry, then set its `agentWallet` to the payment account. CIS-8004 requires the owner to authorize that change and the new wallet to prove control.
 
 Do not assume the mainnet registry contract index is also the testnet address. Confirm the exact testnet registry contract and configure its canonical CAIP-10 ID.
 
@@ -119,7 +119,7 @@ Use `createPactBuyerFetch` only in the server-side buyer-agent process. Load the
 
 ## 8. Facilitator deployment
 
-From the repository root, run `pnpm facilitator` in the facilitator's separate environment. Expose its `/supported`, `/verify`, and `/settle` routes over HTTPS. Confirm `/supported` advertises the Concordium testnet and Exact scheme before pointing the seller app at it. Never deploy the facilitator sponsor key alongside the seller's resource server.
+From the repository root, run `pnpm facilitator` in a separate terminal. The entry point loads `server/facilitator/.env` itself. The seller app loads the root `.env`. Expose its `/supported`, `/verify`, and `/settle` routes over HTTPS. Confirm `/supported` advertises the Concordium testnet and Exact scheme before pointing the seller app at it. Never deploy the facilitator sponsor key alongside the seller's resource server.
 
 ## 9. Demo evidence
 
