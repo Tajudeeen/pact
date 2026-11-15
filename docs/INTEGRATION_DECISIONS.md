@@ -69,7 +69,7 @@ Ambiguous settlement failures remain in `payment_pending` and are blocked from a
 
 This keeps x402 responsible for its standard 402/verify/settle flow while Pact owns the owner gate, agentWallet binding, access state, audit, and delivery boundary.
 
-The package's client example uses `buildBasicAccountSigner` with a private key. Pact must run that client signer inside the buyer-agent runtime, with the agentWallet key held in a server-side secret. Never put the agentWallet private key in the browser or repository. The registered owner uses the Concordium Browser Wallet only to sign Pact's short-lived ownership message.
+The package's client example uses `buildBasicAccountSigner` with a private key. `server/access/buyer-agent.ts` now creates the official `x402Client` using `ExactConcordiumScheme` and wraps `fetch` with `@x402/fetch`. It accepts the owner proof headers and lets the x402 client handle the 402/payment retry. Run this only inside the buyer-agent process, with the agentWallet key loaded from a server-side secret. Never put the agentWallet private key in the browser or repository. The registered owner uses the Concordium Browser Wallet only to sign Pact's short-lived ownership message.
 
 The testnet CAIP-2 identifier is `ccd:4221332d34e1694168c2a0c0b3fd0f27`; the package documents the testnet gRPC endpoint as `grpc.testnet.concordium.com:20000`. Native CCD amounts use six decimal places, so 1 CCD is `1000000` atomic units. The facilitator's `requireFinalization` option defaults to true and should remain enabled for resource release.
 
