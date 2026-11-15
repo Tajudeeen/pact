@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ConcordiumGrpcAccountInfoReader,
   ConcordiumSdkMessageSignatureChecker,
+  ConcordiumGrpcSettlementReconciler,
   type ConcordiumSdkModuleLoader,
 } from "../server/access/concordium-node";
 
@@ -11,6 +12,8 @@ function sdkHarness() {
   const address = { parsed: "account-address" };
   const accountInfo = { credentials: { fresh: true } };
   const getAccountInfo = vi.fn(async () => accountInfo);
+  const getBlockItemStatus = vi.fn(async () => undefined);
+  const fromHexString = vi.fn((value: string) => ({ hash: value }));
   const clientConstructor = vi.fn(function (
     this: object,
     _host: string,
@@ -18,7 +21,7 @@ function sdkHarness() {
     _credentials: unknown,
     _options: unknown,
   ) {
-    Object.assign(this, { getAccountInfo });
+    Object.assign(this, { getAccountInfo, getBlockItemStatus });
   });
   const fromBase58 = vi.fn(() => address);
   const createSsl = vi.fn(() => ({ tls: true }));
@@ -27,6 +30,7 @@ function sdkHarness() {
     web: {
       AccountAddress: { fromBase58 },
       verifyMessageSignature,
+      TransactionHash: { fromHexString },
     },
     node: {
       ConcordiumGRPCNodeClient: clientConstructor as never,
@@ -38,6 +42,8 @@ function sdkHarness() {
     address,
     accountInfo,
     getAccountInfo,
+    getBlockItemStatus,
+    fromHexString,
     clientConstructor,
     fromBase58,
     createSsl,
@@ -65,6 +71,57 @@ describe("Concordium SDK adapters", () => {
       { timeout: 15_000 },
     );
     expect(h.createSsl).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles a finalized successful transaction as paid", async () => {
+    const h = sdkHarness();
+    h.getBlockItemStatus.mockResolvedValue({
+      status: "finalized",
+      outcomes: { "0": { result: { outcome: "success" } } },
+    });
+    const reader = new ConcordiumGrpcAccountInfoReader(h.load);
+    const reconciler = new ConcordiumGrpcSettlementReconciler(reader);
+    const result = await reconciler.reconcile({
+      transactionReference: "ab".repeat(32),
+      network,
+      payerAccount: "5".repeat(50),
+    });
+    expect(result).toEqual({
+      status: "confirmed",
+      transactionReference: "ab".repeat(32),
+      network,
+      payerAccount: "5".repeat(50),
+    });
+    expect(h.fromHexString).toHaveBeenCalledWith("ab".repeat(32));
+  });
+
+  it("keeps committed transactions pending", async () => {
+    const h = sdkHarness();
+    h.getBlockItemStatus.mockResolvedValue({ status: "committed", outcomes: {} });
+    const reconciler = new ConcordiumGrpcSettlementReconciler(
+      new ConcordiumGrpcAccountInfoReader(h.load),
+    );
+    expect(await reconciler.reconcile({
+      transactionReference: "ab".repeat(32),
+      network,
+      payerAccount: "5".repeat(50),
+    })).toMatchObject({ status: "pending" });
+  });
+
+  it("marks finalized rejected transactions as failed", async () => {
+    const h = sdkHarness();
+    h.getBlockItemStatus.mockResolvedValue({
+      status: "finalized",
+      outcomes: { "0": { result: { outcome: "reject" } } },
+    });
+    const reconciler = new ConcordiumGrpcSettlementReconciler(
+      new ConcordiumGrpcAccountInfoReader(h.load),
+    );
+    expect(await reconciler.reconcile({
+      transactionReference: "ab".repeat(32),
+      network,
+      payerAccount: "5".repeat(50),
+    })).toMatchObject({ status: "failed", reason: "concordium_finalized_reject" });
   });
 
   it("delegates message verification to the official SDK", async () => {
