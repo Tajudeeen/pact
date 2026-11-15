@@ -1,136 +1,72 @@
-# Pact
+# Pact Access
 
-**One setup. Your terms.**
+**Proof-gated access for autonomous agents.**
 
-Pact turns a shared perpetual-futures trade idea into an account-specific decision. It checks whether the entry is still valid, sizes the position against account and risk rules, and requires explicit consent before execution.
+Pact Access lets sellers protect paid APIs, datasets, and agent tools behind a privacy-preserving Concordium requirement. A buyer must prove the required fact before x402 payment can settle and the resource can be delivered.
 
-Built for the [dreamDEX Perps Builder Bounty](https://dorahacks.io/hackathon/dreamdex-perps-bounty) on **Somnia Tokyo testnet (chain ID 50383)**.
+The first gate is intentionally narrow: prove that the active CIS-8004 owner authorized the agent's payment wallet. The owner signs a short-lived message, and Pact checks that signature against fresh Concordium account credentials. The agent pays from its on-chain `agentWallet`. No identity attributes are revealed.
 
-[Server-backed app](https://pact-testnet.tajudeenowoeteniyan.workers.dev) · [Private practice preview](https://pact-build-preview.deeen-code.chatgpt.site) · [Judge guide](docs/JUDGE_GUIDE.md) · [Evidence register](evidence/README.md)
+## The flow
 
-> **Qualification status, October 29, 2026:** Practice flows and testnet infrastructure are implemented, but the last documented evidence contains **zero real DreamDEX orders**. A live, funded entry and close, matching on-chain fills, and an independently verified receipt are **still pending**. Do not treat simulations, read-only chain probes or mocked adapter tests as live trading proof. Mainnet trading is deliberately blocked.
+1. A buyer agent requests a protected resource.
+2. Pact challenges the buyer for the required proof. Without it, access is denied before payment or delivery.
+3. The registered owner signs Pact's request-bound message with the Concordium Browser Wallet.
+4. Pact verifies the owner's signature, then checks the active registry owner and the agent's on-chain `agentWallet` match the request and x402 payer.
+5. Pact coordinates x402 settlement.
+6. Pact delivers the resource only after payment is confirmed.
+7. The seller sees a sanitized audit trail for blocked and cleared requests.
 
-## Trading qualification enhancements (review branch)
+## Why Pact
 
-This branch adds safeguards and evidence UX without enabling automated trades:
+Agents are becoming customers of APIs, datasets, and other agents. Sellers need a way to apply access requirements without collecting identity documents or trusting a checkbox in an agent's profile.
 
-- **Fresh setup drafts:** An expired setup offers an explicit *Create fresh setup* action. The original setup remains unchanged. The new form preloads old terms for review, fetches current quotes, defaults to practice unless an authorized testnet session is present, and requires manual publication and new consent.
-- **Readiness actions:** The existing owner-scoped, read-only access check now provides next steps for failed operator permissions, margin and gas conditions. An expired readiness report must be refreshed.
-- **Evidence milestones:** Order pages distinguish approval, hashes and actual chain proofs. Missing proof is always shown as unestablished, never successful.
-- **Repeatable checks:** `pnpm verify` executes the test suite, types, builds, release gates and read-only doctor in order. A timestamped JSON report is saved under ignored `.data/verification/`. Failure stops the sequence; no trades are sent.
-- **Candidate evidence manifest:** `pnpm evidence:collect /path/to/pact-receipt.json` writes an intentionally **unverified** sanitized receipt summary under ignored `.data/evidence/`. It refuses to mark missing proof as complete and requires an independent `pnpm run verify:receipt` chain check before a judge-facing claim.
+Pact puts the verification gate in the request and payment path. Missing, invalid, mismatched, expired, or unverifiable proofs fail closed.
 
-These edits have not been regression-tested or deployed in this chat. Do not claim funded testnet execution until entry, fills, close and flat-position observations exist.
+## Current status
 
+This repository is being reworked from its original Somnia/dreamDEX perps prototype into Pact Access for the Concordium Trusted Agents Hackathon.
 
-## Why Pact?
+- Original trading implementation remains available in Git history.
+- New product specification: [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md).
+- Integration research and decisions: [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md).
+- The landing page now presents Pact Access. Legacy perps routes are hidden from the app entry points.
+- Concordium testnet/mainnet use canonical CAIP-2 identifiers (`ccd:4221332d34e1694168c2a0c0b3fd0f27` and `ccd:9dd9ca4d19e9393877d2c44b70f89acb`). The official `@x402/concordium` package and Concordium account-signature verification APIs are documented integration paths, not yet wired into Pact.
+- Implemented locally in the branch: request-bound owner-signature message, one-time challenge storage, Concordium account-signature verifier adapter, CIS-8004 owner/agentWallet binding adapter, fail-closed access pipeline, SQLite request/challenge persistence, sanitized audit persistence, and tests.\n- The SDK clients, live registry resolver, x402 facilitator, Hono middleware, and protected resource route are not yet wired. No testnet proof, payment, or delivery evidence is claimed until it exists and can be independently checked.
 
-A group shares an entry range, stop and target. Someone arriving after price has moved may need to skip it. Another member inside the entry window may be able to trade a different amount, based on their available margin and personal risk limits. Pact makes those decisions explicit before the user approves anything.
+## Initial build scope
 
-The workflow is **share setup → inspect live market and account → calculate eligibility and size → approve terms → observe execution → reconcile outcome**. In practice mode, execution is simulated and labeled accordingly.
+- One seller, one protected resource, one buyer agent.
+- One Concordium owner-signature check and one CIS-8004 agentWallet binding.
+- One Concordium testnet x402 payment path.
+- Reusable TypeScript gateway/middleware.
+- Fail-closed proof and settlement state machine.
+- Sanitized audit timeline and clear blocked/cleared dashboard states.
+- Real testnet proof/payment evidence and a short end-to-end demo.
 
-## What works today
+## Security boundaries
 
-| Area | Implementation | Proof boundary |
-| --- | --- | --- |
-| Shareable setups and account-specific previews | Publish, size, reject late/stale/thin-liquidity scenarios | Practice and local tests |
-| Live market feed | BTC/ETH testnet marks, best bid/ask and observation age | Read-only market data, never an execution claim |
-| Wallet sign-in | EOA signature login, Tokyo switch/add handling, owner restriction | Mobile-wallet compatibility still unverified |
-| Testnet adapter | dreamDEX SDK discovery, perps reads, linked operator, simulation and signing path | No funded entry/close yet recorded |
-| Risk and recovery | Margin/fee-aware sizing, liquidation buffer, capped notional, one-use approvals, persisted reservations and nonce recovery | Local regression suite; live fill/recovery qualification pending |
-| Order receipts | Canonical confirmation checks, matched fills, flat-position read, independently rebuilt fee/funding ledger | Requires actual chain data for a genuine testnet receipt |
-| Hosting | Cloudflare Worker, SQLite Durable Objects and alarms | Deployed practice flow checked previously; no live trading proof |
+- Resource delivery follows verified proof and confirmed payment, never frontend state.
+- Owner signatures must be bound to the right network, account, agent, seller and request context. The x402 sender must match the current on-chain agentWallet.
+- Chain or facilitator failure blocks access.
+- No names, identity documents, raw credentials, secrets, or unsafe reusable proof material in logs.
+- A signature proves only control of the account that signed it. It does not prove extra identity attributes.
+- Test fixtures and simulations are labeled and never presented as live chain evidence.
 
-The evidence register records **170 tests passed in the last documented local run**. This is historical evidence, not a claim that CI was rerun today. [Read the exact scope](evidence/README.md).
+## Development
 
-### Important execution limits
+The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current pipeline has a SQLite repository implementation and typed adapters, but is not yet mounted into the Hono app or connected to the Concordium SDK, live Agent Registry, x402 facilitator, or protected seller endpoint.
 
-- Testnet entries are capped at **25 USDso notional** by the server, subject to stricter personal and market minimums.
-- Linked-operator orders cannot place exchange-native TP/SL for the account. Pact monitors exits while its executor is running, and availability, latency and slippage can increase losses.
-- The linked-order close route is **not protocol-enforced reduce-only**. It checks position state and uses an opposing fill-or-kill order, so external position changes can make a close unsafe.
-- Uncertain broadcasts reconcile by the saved hash. Pact does not blindly resend a replacement trade.
-- A successful transaction receipt alone is insufficient: matching fill events and a fresh flat-position observation are required to mark a close complete.
-- STT gas is reported separately from USDso trading PnL. Incomplete bank-event coverage leaves net USDso PnL unknown.
-- Mainnet trading, smart-account sign-in and WalletConnect QR pairing are not supported. [Security](SECURITY.md) · [Mainnet release gates](docs/MAINNET.md).
+See [integration decisions](docs/INTEGRATION_DECISIONS.md) for official SDK paths, trust boundaries, and the remaining implementation checklist.
 
-## Run locally
+## Competition submission evidence
 
-Requires **Node.js 24.13+** and **pnpm 11.25.0**. The lockfile is committed.
+The release is not complete until it has:
 
-```bash
-pnpm install --frozen-lockfile
-cp .env.example .env
-# In .env, set PACT_ORIGIN=http://localhost:8787
-pnpm build
-pnpm start
-```
+- a public repository with reproducible setup;
+- a testnet deployment;
+- real proof verification and real payment transactions;
+- CCDExplorer transaction links;
+- a demo showing blocked request → proof → payment → delivery;
+- clear privacy, failure, and production-rollout documentation.
 
-Open `http://localhost:8787`. On Windows use `Copy-Item .env.example .env`. Never commit `.env`, `.data/`, operator keys, sessions or signed transaction bodies.
-
-For frontend development set `PACT_ORIGIN=http://localhost:5173` and run `pnpm dev` and `pnpm dev:web` in separate terminals. For the static practice-only build use `pnpm dev:preview` or `pnpm build:preview`. Preview state is browser-local and never places testnet orders. [Preview details](docs/PREVIEW.md).
-
-## Two-minute judge path
-
-1. Open the [server-backed app](https://pact-testnet.tajudeenowoeteniyan.workers.dev) and choose **Try it without a wallet**.
-2. Open **BTC, wait for the pullback** and compare the **standard** and **arrives late** scenarios.
-3. Select **standard**, choose **Check my size**, read the terms and approve.
-4. Inspect the **simulated** fill timeline, close the practice position and download the practice receipt.
-5. Test **old data**, **thin liquidity** and **lost response** to see refusals and recovery without a second submission.
-
-Practice transactions are intentionally simulated, with no fabricated hashes or profits. Seeded setups expire 24 hours after the database's first initialization; publish a new setup if necessary.
-
-## Qualify a real Tokyo trade
-
-**Only the wallet owner can approve testnet execution. Do not paste any private key into chat, GitHub or the browser.**
-
-1. Open **Account** in the deployed app with the configured owner EOA. Confirm Tokyo chain **50383**.
-2. Compare the app's **current operator public address** with the operator linked under dreamDEX **Link a Bot**. Fund operator STT gas and eligible owner paper USDso perps margin in a dedicated testnet account.
-3. Run authenticated **Check testnet access**, fix any permission, margin, gas or market blockers, and review a fresh setup. The report is read-only and expires after 30 seconds.
-4. After explicit approval, record a real entry hash, canonical confirmations, matched fills and current position. Then close and independently verify both close fills and a flat-position read.
-5. Export a sanitized receipt and verify it with `pnpm run verify:receipt /path/to/receipt.json`. Keep raw signed actions and secrets private.
-
-The Cloudflare deployment maintains its operator in private Durable Object storage. **Do not change or recreate the owner lane or operator identity during cleanup.** For Node-only development, the separately documented operator-secret setup applies. [Full Tokyo runbook](docs/TESTNET.md) · [Cloudflare runbook](docs/CLOUDFLARE.md).
-
-## Test and build
-
-```bash
-pnpm test
-pnpm typecheck
-pnpm build
-pnpm run doctor
-pnpm check:cloudflare
-pnpm build:cloudflare
-pnpm run release:check
-```
-
-`pnpm run doctor` is a **read-only** connectivity probe. The available Cloudflare smoke test exercises practice only:
-
-```bash
-PACT_SMOKE_URL=https://pact-testnet.tajudeenowoeteniyan.workers.dev pnpm smoke:cloudflare
-```
-
-Deploy only after reviewing the production configuration and preserving Durable Object bindings:
-
-```bash
-pnpm exec wrangler deploy --env production --minify
-```
-
-## Bounty submission status
-
-Submission deadline: **November 1, 2026 at 23:59 UTC** (**November 2 at 00:59 Africa/Lagos**).
-
-| Requirement | Current evidence |
-| --- | --- |
-| DoraHacks whitelist | Not verified |
-| Real testnet entry, fill and close | Pending |
-| Demo recording | Pending |
-| GitHub judge access | Repository private, access unverified |
-| 2 or 3 X updates tagging @DreamDEXSomnia | No published links recorded |
-
-Track the outstanding acceptance work in [issue #1](https://github.com/Tajudeeen/pact/issues/1) and the [submission checklist](docs/SUBMISSION.md). Do not add placeholder transaction hashes, demo URLs or social links.
-
-## Project references
-
-[Architecture](docs/ARCHITECTURE.md) · [Failure behavior](docs/FAILURES.md) · [Live market data](docs/LIVE_MARKETS.md) · [Branding](docs/BRANDING.md) · [Judge guide](docs/JUDGE_GUIDE.md) · [Evidence](evidence/README.md) · [Security disclosure](SECURITY.md)
-
-Pact is an independent bounty prototype. DreamDEX and Somnia names identify integrations; they do not imply an endorsement or a production-ready trading service.
+See [the Pact Access product specification](docs/PACT_ACCESS_SPEC.md).
