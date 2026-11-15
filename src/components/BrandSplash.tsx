@@ -5,7 +5,7 @@ export function BrandSplash() {
 
   useEffect(() => {
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 180 : 1150);
+    const timeout = window.setTimeout(() => setVisible(false), reducedMotion ? 400 : 1800);
     return () => window.clearTimeout(timeout);
   }, []);
 
