@@ -1,0 +1,164 @@
+import { useMemo, useState } from "react";
+import { ArrowRight, Check, Copy, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
+import { api, browserPreview } from "../api";
+import { createConcordiumOwnerProof } from "../access/concordium-wallet";
+
+interface AccessChallenge {
+  requestId: string;
+  challenge: string;
+  expiresAt: string;
+  policyId: string;
+  message: string;
+}
+
+interface SignedProof {
+  account: string;
+  headerValue: string;
+}
+
+const agentIdPattern = /^[1-9A-HJ-NP-Za-km-z]{20,80}$/;
+
+export function OwnerProofConsole() {
+  const [agentId, setAgentId] = useState("");
+  const [challenge, setChallenge] = useState<AccessChallenge | null>(null);
+  const [proof, setProof] = useState<SignedProof | null>(null);
+  const [busy, setBusy] = useState<"challenge" | "sign" | null>(null);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const validAgent = useMemo(() => agentIdPattern.test(agentId.trim()), [agentId]);
+  const expired = challenge ? Date.parse(challenge.expiresAt) <= Date.now() : false;
+
+  const issueChallenge = async () => {
+    setBusy("challenge");
+    setError("");
+    setProof(null);
+    setChallenge(null);
+    try {
+      const result = await api<AccessChallenge>("/access/challenges", {
+        method: "POST",
+        body: { buyerAgentId: agentId.trim() },
+      });
+      if (!result.requestId || !result.message || !Number.isFinite(Date.parse(result.expiresAt))) {
+        throw new Error("Pact returned an incomplete challenge. No proof was created.");
+      }
+      setChallenge(result);
+    } catch (cause) {
+      setError((cause as Error).message || "Pact could not issue a challenge.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const signChallenge = async () => {
+    if (!challenge || expired) return;
+    setBusy("sign");
+    setError("");
+    try {
+      const result = await createConcordiumOwnerProof(challenge.message);
+      if (Date.parse(challenge.expiresAt) <= Date.now()) {
+        setChallenge(null);
+        throw new Error("The challenge expired while signing. Request a fresh challenge.");
+      }
+      setProof({ account: result.account, headerValue: result.headerValue });
+    } catch (cause) {
+      setError((cause as Error).message || "The Concordium wallet could not sign this challenge.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const copyHandoff = async () => {
+    if (!challenge || !proof || expired) return;
+    const handoff = JSON.stringify({
+      requestId: challenge.requestId,
+      headers: {
+        "x-pact-access-request": challenge.requestId,
+        "x-pact-owner-proof": proof.headerValue,
+      },
+    }, null, 2);
+    try {
+      await navigator.clipboard.writeText(handoff);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("Clipboard access failed. Copy the request ID and proof header from your buyer-agent environment.");
+    }
+  };
+
+  return (
+    <section className="access-console" id="owner-proof">
+      <div className="access-console-intro">
+        <div className="access-kicker">TRY THE OWNER GATE</div>
+        <h2>prove control.<br/><em>keep your identity private.</em></h2>
+        <p>Request a short-lived challenge for an active CIS-8004 agent, then sign the exact message with its Concordium owner wallet.</p>
+        <div className="access-console-points">
+          <span><ShieldCheck size={14}/> server-issued challenge</span>
+          <span><LockKeyhole size={14}/> one-time proof</span>
+          <span><Fingerprint size={14}/> no identity documents</span>
+        </div>
+      </div>
+      <div className="access-console-panel">
+        <div className="access-console-top">
+          <span>PACT / OWNER VERIFICATION</span>
+          <span className="access-console-state"><i/> TESTNET FLOW</span>
+        </div>
+        {browserPreview ? (
+          <div className="access-console-notice">
+            <strong>Live access API unavailable in this preview.</strong>
+            <p>Open the deployed Pact Access app to request a server-issued challenge.</p>
+          </div>
+        ) : (
+          <>
+            <label className="access-console-label" htmlFor="pact-agent-id">CIS-8004 buyer agent ID</label>
+            <input
+              id="pact-agent-id"
+              className="access-console-input"
+              value={agentId}
+              onChange={(event) => {
+                setAgentId(event.target.value.trim());
+                setChallenge(null);
+                setProof(null);
+                setError("");
+              }}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Paste the active agent token address"
+              aria-describedby="pact-agent-help"
+            />
+            <p className="access-console-help" id="pact-agent-help">Use the token address from the trusted Agent Registry. Pact resolves the owner and payment wallet from the registry.</p>
+            <button className="access-console-button" onClick={() => void issueChallenge()} disabled={!validAgent || busy !== null}>
+              {busy === "challenge" ? <><LoaderCircle size={15} className="access-spin"/> Requesting challenge</> : <>Request owner challenge <ArrowRight size={15}/></>}
+            </button>
+            {!validAgent && agentId.length > 0 && <p className="access-console-inline-error">Enter a valid base58 CIS-8004 token address.</p>}
+            {challenge && (
+              <div className="access-challenge-card">
+                <div className="access-challenge-heading"><span>CHALLENGE ISSUED</span><span>{expired ? "EXPIRED" : "90-SECOND WINDOW"}</span></div>
+                <div className="access-challenge-row"><small>REQUEST ID</small><code>{challenge.requestId}</code></div>
+                <div className="access-challenge-row"><small>POLICY</small><code>{challenge.policyId}</code></div>
+                <p className="access-console-help">The message binds your owner signature to this request, agent, seller, resource and payment wallet.</p>
+                {proof ? (
+                  <div className="access-proof-ready" role="status">
+                    <Check size={16}/>
+                    <div><strong>Owner signature created</strong><small>{proof.account}</small></div>
+                  </div>
+                ) : (
+                  <button className="access-console-button secondary" onClick={() => void signChallenge()} disabled={expired || busy !== null}>
+                    {busy === "sign" ? <><LoaderCircle size={15} className="access-spin"/> Waiting for Concordium wallet</> : <>Connect wallet and sign <Fingerprint size={15}/></>}
+                  </button>
+                )}
+                {proof && (
+                  <button className="access-console-button" onClick={() => void copyHandoff()} disabled={expired}>
+                    {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
+                  </button>
+                )}
+                <p className="access-console-help">A signature alone does not settle payment or unlock the resource. The buyer agent must submit this proof through the configured x402 flow.</p>
+              </div>
+            )}
+            {error && <p className="access-console-error" role="alert">{error}</p>}
+          </>
+        )}
+        <div className="access-console-foot"><span>FAIL-CLOSED BY DEFAULT</span><span>NO PAYMENT FROM THIS SCREEN</span></div>
+      </div>
+    </section>
+  );
+}
