@@ -88,6 +88,10 @@ export class AccessPipeline<T> {
     this.now = deps.now ?? (() => new Date());
   }
 
+  async requestState(requestId: string): Promise<AccessRequestState> {
+    return this.requireState(requestId);
+  }
+
   async verifyOwner(input: {
     requestId: string;
     presentation: unknown;
