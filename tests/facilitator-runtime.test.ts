@@ -102,6 +102,12 @@ describe("Pact Concordium facilitator runtime", () => {
       ...validPayment,
       requirements: { ...validPayment.requirements, amount: "1" },
     })).toMatchObject({ abort: true, reason: "pact_facilitator_policy_mismatch" });
+    const settlePolicy = h.facilitator.onBeforeSettle.mock.calls[0]?.[0] as (input: unknown) => unknown;
+    expect(settlePolicy(validPayment)).toBeUndefined();
+    expect(settlePolicy({
+      ...validPayment,
+      paymentPayload: { resource: { url: "https://attacker.test/resource" } },
+    })).toMatchObject({ abort: true, reason: "pact_facilitator_policy_mismatch" });
     expect(runtime.supported()).toEqual({
       kinds: [{ scheme: "exact", network: CONCORDIUM_TESTNET }],
     });
