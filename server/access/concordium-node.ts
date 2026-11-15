@@ -13,6 +13,9 @@ interface ConcordiumWebSdk {
     signature: unknown,
     accountInfo: unknown,
   ): boolean;
+  TransactionHash: {
+    fromHexString(value: string): unknown;
+  };
 }
 
 interface ConcordiumNodeSdk {
@@ -23,6 +26,7 @@ interface ConcordiumNodeSdk {
     options?: { timeout?: number },
   ) => {
     getAccountInfo(address: unknown): Promise<unknown>;
+    getBlockItemStatus(transactionHash: unknown): Promise<unknown>;
   };
   credentials: {
     createSsl(): unknown;
@@ -80,6 +84,17 @@ export class ConcordiumGrpcAccountInfoReader implements ConcordiumAccountInfoRea
     return modules.client.getAccountInfo(address);
   }
 
+  async getBlockItemStatus(
+    transactionHash: string,
+    network: AccessContext["network"],
+  ): Promise<unknown> {
+    if (!/^[a-f0-9]{64}$/i.test(transactionHash))
+      throw new Error("Concordium transaction hash must be 32-byte hexadecimal.");
+    const modules = await this.getClient(network);
+    const hash = modules.modules.web.TransactionHash.fromHexString(transactionHash);
+    return modules.client.getBlockItemStatus(hash);
+  }
+
   private getClient(network: AccessContext["network"]) {
     let pending = this.clients.get(network);
     if (!pending) {
@@ -113,5 +128,55 @@ export class ConcordiumSdkMessageSignatureChecker implements ConcordiumMessageSi
   ): Promise<boolean> {
     const modules = await this.loadModules();
     return modules.web.verifyMessageSignature(message, signature, accountInfo);
+  }
+}
+
+/** Reads the final chain outcome for a transaction whose facilitator response timed out. */
+export class ConcordiumGrpcSettlementReconciler {
+  constructor(private readonly reader: ConcordiumGrpcAccountInfoReader) {}
+
+  async reconcile(input: {
+    transactionReference: string;
+    network: AccessContext["network"];
+    payerAccount: string;
+  }) {
+    const raw = await this.reader.getBlockItemStatus(
+      input.transactionReference,
+      input.network,
+    );
+    if (!raw || typeof raw !== "object")
+      return { status: "pending" as const, transactionReference: input.transactionReference };
+
+    const status = (raw as Record<string, unknown>).status;
+    if (status !== "finalized")
+      return { status: "pending" as const, transactionReference: input.transactionReference };
+
+    const outcomes = (raw as Record<string, unknown>).outcomes;
+    const values = outcomes && typeof outcomes === "object"
+      ? Object.values(outcomes as Record<string, unknown>)
+      : [];
+    const outcomeRecord = values[0] && typeof values[0] === "object"
+      ? values[0] as Record<string, unknown>
+      : undefined;
+    const result = outcomeRecord?.result && typeof outcomeRecord.result === "object"
+      ? outcomeRecord.result as Record<string, unknown>
+      : undefined;
+
+    if (result?.outcome === "success") {
+      return {
+        status: "confirmed" as const,
+        transactionReference: input.transactionReference,
+        network: input.network,
+        payerAccount: input.payerAccount,
+      };
+    }
+
+    return {
+      status: "failed" as const,
+      reason: "concordium_finalized_" +
+        String(result?.outcome ?? "without_successful_outcome")
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "_"),
+    };
   }
 }
