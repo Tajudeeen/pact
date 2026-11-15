@@ -60,9 +60,18 @@ interface X402PaymentRequirements {
 }
 
 interface X402SettleContext {
-  paymentPayload: X402PaymentPayload;
-  requirements: X402PaymentRequirements;
-  transportContext?: X402TransportContext;
+  paymentPayload: {
+    resource?: { url?: string };
+    payload: Record<string, unknown>;
+  };
+  requirements: {
+    scheme: string;
+    network: string;
+    amount: string;
+    asset: string;
+    payTo: string;
+  };
+  transportContext?: unknown;
 }
 
 interface X402SettleResultContext extends X402SettleContext {
@@ -70,7 +79,7 @@ interface X402SettleResultContext extends X402SettleContext {
     success: boolean;
     payer?: string;
     transaction: string;
-    network: AccessContext["network"];
+    network: string;
   };
 }
 
@@ -84,9 +93,21 @@ function safeRequestId(value: string | undefined): string | null {
 }
 
 function requestIdFrom(context: X402SettleContext): string | null {
+  if (!context.transportContext || typeof context.transportContext !== "object") return null;
+  const request = (context.transportContext as Record<string, unknown>).request;
+  if (!request || typeof request !== "object") return null;
+  const adapter = (request as Record<string, unknown>).adapter;
+  if (!adapter || typeof adapter !== "object") return null;
+  const getHeader = (adapter as Record<string, unknown>).getHeader;
+  if (typeof getHeader !== "function") return null;
   return safeRequestId(
-    context.transportContext?.request?.adapter.getHeader(PACT_ACCESS_REQUEST_HEADER),
+    (getHeader as (name: string) => string | undefined).call(adapter, PACT_ACCESS_REQUEST_HEADER),
   );
+}
+
+function isConcordiumNetwork(value: string): value is AccessContext["network"] {
+  return value === "ccd:4221332d34e1694168c2a0c0b3fd0f27" ||
+    value === "ccd:9dd9ca4d19e9393877d2c44b70f89acb";
 }
 
 function decodeOwnerProof(value: string | undefined): unknown | null {
@@ -112,8 +133,8 @@ function decodeOwnerProof(value: string | undefined): unknown | null {
   }
 }
 
-function signedTransactionFrom(payload: X402PaymentPayload) {
-  const transaction = payload.payload?.signedTransaction;
+function signedTransactionFrom(payload: X402SettleContext["paymentPayload"]) {
+  const transaction = payload.payload?.signedTransaction as X402PaymentPayload["payload"] extends { signedTransaction?: infer T } ? T : never;
   if (
     !transaction ||
     transaction.version !== 1 ||
@@ -184,7 +205,9 @@ export function createPactX402Hooks(pipeline: PactAccessPipeline) {
       const requestId = requestIdFrom(context);
       const transaction = signedTransactionFrom(context.paymentPayload);
       const resourceId = context.paymentPayload.resource?.url;
-      if (!requestId || !transaction || !resourceId)
+      if (!requestId || !transaction || !resourceId ||
+        context.requirements.scheme !== "exact" ||
+        !isConcordiumNetwork(context.requirements.network))
         return {
           abort: true,
           reason: "pact_payment_context_invalid",
@@ -201,7 +224,7 @@ export function createPactX402Hooks(pipeline: PactAccessPipeline) {
             },
           },
           requirement: {
-            scheme: context.requirements.scheme as "exact",
+            scheme: "exact",
             network: context.requirements.network,
             amount: context.requirements.amount,
             asset: context.requirements.asset,
@@ -226,6 +249,7 @@ export function createPactX402Hooks(pipeline: PactAccessPipeline) {
         !requestId ||
         !result.success ||
         !result.transaction ||
+        !isConcordiumNetwork(result.network) ||
         result.network !== context.requirements.network ||
         !result.payer
       ) throw new PactSettlementPersistenceError();
