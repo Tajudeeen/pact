@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, LockKeyhole, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { Link } from "react-router";
+import { OwnerProofConsole } from "../components/OwnerProofConsole";
 
 
 const flow = [
@@ -41,6 +42,7 @@ export function Landing() {
           <div className="access-section-heading"><div className="access-kicker">ONE REQUEST. FOUR CHECKS.</div><h2>access has a sequence.<br/><em>pact enforces it.</em></h2></div>
           <div className="access-flow-grid">{flow.map((item)=><article className="access-flow-card" key={item.n}><span>{item.n}</span><h3>{item.title}</h3><p>{item.text}</p><div className="access-flow-card-line"/></article>)}</div>
         </section>
+        <OwnerProofConsole />
         <section id="security" className="access-security-section"><div><div className="access-kicker">THE TRUST BOUNDARY</div><h2>verify the owner.<br/><em>keep identity private.</em></h2><p>Pact verifies the owner signature against fresh chain credentials, then checks the active Agent Registry owner and registered `agentWallet` match. It does not collect identity documents or personal attributes.</p></div><div className="access-security-list"><div><Check size={16}/><span>No identity documents or attributes are requested</span></div><div><Check size={16}/><span>Account signature is verified server-side</span></div><div><Check size={16}/><span>Payment must be independently confirmed</span></div><div><Check size={16}/><span>Protected bytes never leave before clearance</span></div><div><Check size={16}/><span>Missing proof or unavailable verifier fails closed</span></div></div></section>
         <section id="scope" className="access-scope-section"><div className="access-kicker">SMALL FIRST. REUSABLE NEXT.</div><h2>one seller. one resource.<br/><em>one proof gate.</em></h2><p>The first build targets one Concordium account-signature requirement and one x402 testnet payment path. The gateway boundary is designed to be reused across protected resources.</p><div className="access-scope-tags"><span>CONCORDIUM SIGNATURE</span><span>AGENT BINDING</span><span>x402</span><span>FAIL-CLOSED GATE</span><span>SANITIZED AUDIT</span></div><div className="access-status-note"><span className="access-status-dot"/><div><strong>Integration work in progress</strong><p>Wallet signing, registry resolution, x402 facilitator, and testnet settlement are not represented as live integrations yet.</p></div></div></section>
         <section className="access-final"><div className="access-kicker">PACT ACCESS</div><h2>paid access should<br/><em>have a verified owner behind it.</em></h2><a className="access-button" href="#flow">Follow the request <ArrowRight size={17}/></a><p>Proof-gated access for autonomous agents.</p></section>
