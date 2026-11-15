@@ -122,7 +122,7 @@ export class ConcordiumMcpAgentResolver implements Cis8004AgentResolver {
       throw new Error("Concordium registry could not resolve this agent.");
 
     const structured = response.body.result?.structuredContent;
-    if (structured) return parseAgentRecord(structured, input.tokenAddress, this.options.registryId);
+    if (structured) return parseAgentRecord(structured, input.tokenAddress, this.options.registryId, network);
 
     const text = response.body.result?.content?.find((part) => part.type === "text")?.text;
     if (!text) throw new Error("Concordium registry returned no agent record.");
