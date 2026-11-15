@@ -69,6 +69,7 @@ describe("Concordium MCP agent resolver", () => {
 
   it("preserves revoked status for the owner-binding verifier to reject", async () => {
     const h = mcpFetch({
+      network: "testnet",
       token_address: tokenAddress,
       owner_account: "4".repeat(50),
       agent_wallet: "5".repeat(50),
@@ -87,6 +88,7 @@ describe("Concordium MCP agent resolver", () => {
 
   it("rejects records for a different token address", async () => {
     const h = mcpFetch({
+      network: "testnet",
       token_address: "different-token",
       owner_account: "4".repeat(50),
       agent_wallet: "5".repeat(50),
