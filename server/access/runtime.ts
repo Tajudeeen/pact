@@ -143,5 +143,7 @@ export async function createPactAccessRuntime(
       ),
     deliverPaidResource: (requestId: string) =>
       pipeline.deliverPaidResource(requestId),
+    reconcileAndDeliver: (requestId: string) =>
+      pipeline.reconcileAndDeliver(requestId),
   };
 }
