@@ -112,6 +112,16 @@ describe("Pact x402 runtime", () => {
     expect(h.facilitator).not.toHaveBeenCalled();
   });
 
+  it("rejects an insecure remote facilitator URL", async () => {
+    const h = modulesHarness();
+    await expect(createPactX402Runtime(
+      {} as never,
+      { ...config, facilitatorUrl: "http://facilitator.example.com" },
+      h.loadModules,
+    )).rejects.toThrow("HTTPS outside localhost");
+    expect(h.facilitator).not.toHaveBeenCalled();
+  });
+
   it("rejects a resource URL whose path differs from the protected route", async () => {
     const h = modulesHarness();
     await expect(createPactX402Runtime(
