@@ -21,7 +21,7 @@ const bars = Array.from({ length: 44 }, (_, i) => i);
 export function Landing() {
   useEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || typeof IntersectionObserver === "undefined") {
       targets.forEach((el) => el.classList.add("is-visible"));
       return;
     }
