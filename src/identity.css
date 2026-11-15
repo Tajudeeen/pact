@@ -1368,3 +1368,523 @@
   padding: 16px;
   border: 1px solid var(--line, #d8cfc1);
 }
+
+
+/* Weir-inspired Pact Access interface: bright infrastructure surfaces, quiet data detail. */
+:root {
+  color-scheme: light;
+  --brand: #315f58;
+  --brand-hover: #254d47;
+  --accent: #4b766d;
+  --success: #28745b;
+  --danger: #b44d45;
+  --warning: #986c31;
+  --page: #f5f6f2;
+  --surface: #ffffff;
+  --surface-raised: #edf0eb;
+  --surface-overlay: #e4e9e3;
+  --text-heading: #17231f;
+  --ink: #34443d;
+  --muted: #68766e;
+  --line: #dce3dc;
+  --line-subtle: #e9eee8;
+}
+body {
+  background: #f5f6f2;
+  color: #17231f;
+}
+.access-landing {
+  --access-ink: #17231f;
+  --access-muted: #68766e;
+  --access-line: #dce3dc;
+  --access-paper: #ffffff;
+  --access-soft: #edf2ed;
+  --access-accent: #315f58;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 83% 8%, rgb(220 231 220 / 56%), transparent 31rem),
+    #f5f6f2;
+  color: var(--access-ink);
+  font-family: "Geist", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.access-landing a { color: inherit; }
+.access-nav {
+  max-width: 1280px;
+  min-height: 82px;
+  margin: 0 auto;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--access-line);
+}
+.access-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--access-ink);
+  font-size: 19px;
+  font-weight: 720;
+  letter-spacing: -0.075em;
+}
+.access-brand-symbol {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #244f48;
+  color: white;
+  font-size: 17px;
+  letter-spacing: -0.08em;
+}
+.access-brand-dot { color: #4d8878; }
+.access-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  color: #64736b;
+  font-size: 12px;
+}
+.access-nav nav a, .access-text-link { transition: color .18s ease; }
+.access-nav nav a:hover, .access-text-link:hover { color: #24564d; }
+.access-nav-cta {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 15px;
+  border: 1px solid #d4ddd5;
+  border-radius: 7px;
+  background: rgb(255 255 255 / 72%);
+  font-size: 11px;
+  font-weight: 620;
+}
+.access-nav-cta:hover { border-color: #9db6a9; background: white; }
+.access-landing main { width: 100%; }
+.access-hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 86px 48px 76px;
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(440px, 1.08fr);
+  gap: clamp(42px, 6vw, 88px);
+  align-items: center;
+}
+.access-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #55776a;
+  font: 650 9px/1.5 "Source Code Pro", ui-monospace, monospace;
+  letter-spacing: .105em;
+}
+.access-kicker > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4f8a70;
+  box-shadow: 0 0 0 4px rgb(79 138 112 / 10%);
+}
+.access-hero h1 {
+  margin: 26px 0 22px;
+  color: #17231f;
+  font-size: clamp(48px, 5.1vw, 72px);
+  line-height: .99;
+  font-weight: 570;
+  letter-spacing: -.075em;
+}
+.access-hero h1 em, .access-section-heading h2 em,
+.access-security-section h2 em, .access-scope-section h2 em,
+.access-final h2 em, .access-console-intro h2 em {
+  color: #718078;
+  font-style: normal;
+}
+.access-lede {
+  max-width: 460px;
+  margin: 0;
+  color: #64736b;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.access-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 23px;
+  margin-top: 29px;
+}
+.access-button {
+  min-height: 47px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid #244f48;
+  border-radius: 6px;
+  background: #244f48;
+  color: #fff !important;
+  font-size: 11px;
+  font-weight: 650;
+  transition: transform .18s ease, background .18s ease;
+}
+.access-button:hover { transform: translateY(-2px); background: #193f39; }
+.access-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #5c6e65 !important;
+  font-size: 11px;
+}
+.access-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 36px;
+  color: #68766e;
+  font: 9px "Source Code Pro", ui-monospace, monospace;
+  letter-spacing: .035em;
+}
+.access-caption svg { color: #477767; }
+.access-caption span { width: 3px; height: 3px; border-radius: 50%; background: #a8b5aa; }
+.access-visual {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 25px 17px;
+  border: 1px solid #dce4dc;
+  border-radius: 12px;
+  background:
+    linear-gradient(140deg, rgb(255 255 255 / 94%), rgb(241 246 239 / 94%)),
+    white;
+  box-shadow: 0 22px 70px rgb(38 64 50 / 8%);
+}
+.access-visual::before {
+  content: "";
+  position: absolute;
+  width: 330px;
+  height: 330px;
+  right: -100px;
+  top: -150px;
+  border: 1px solid rgb(84 130 111 / 15%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgb(84 130 111 / 3%), 0 0 0 50px rgb(84 130 111 / 2%);
+  pointer-events: none;
+}
+.access-visual-top, .access-visual-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #77857c;
+  font: 8px "Source Code Pro", ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.access-live-label { color: #3e8066; }
+.access-visual-agent, .access-gate, .access-proof, .access-settlement, .access-delivery {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.access-visual-agent {
+  margin: 25px 0 0;
+  padding: 17px;
+  border: 1px solid #e1e8e1;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 88%);
+}
+.access-orb, .access-gate-icon, .access-proof-icon {
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #eaf1eb;
+  color: #376b5b;
+}
+.access-visual-agent > div:nth-child(2), .access-gate > div:nth-child(2),
+.access-proof > div:nth-child(2), .access-delivery > div {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.access-visual small, .access-visual-agent small, .access-gate small,
+.access-proof small, .access-settlement small, .access-delivery small {
+  color: #829087;
+  font: 8px "Source Code Pro", ui-monospace, monospace;
+  letter-spacing: .075em;
+}
+.access-visual strong { color: #24352d; font-size: 12px; font-weight: 650; }
+.access-visual-agent span, .access-proof span { color: #839087; font-size: 9px; }
+.access-visual-agent > svg { color: #829087; }
+.access-gate {
+  margin: 0 24px;
+  padding: 15px 0 15px 17px;
+  border-left: 1px dashed #b5c8ba;
+}
+.access-gate-icon { width: 35px; height: 35px; flex-basis: 35px; border-radius: 50%; background: #f5f0e5; color: #947340; }
+.access-gate-status, .access-unlocked {
+  padding: 6px 8px;
+  border: 1px solid #e0e7dc;
+  border-radius: 4px;
+  color: #8b7950;
+  font: 8px "Source Code Pro", ui-monospace, monospace;
+}
+.access-proof {
+  margin: 0 0 0 24px;
+  padding: 15px;
+  border: 1px solid #dce9df;
+  border-radius: 8px;
+  background: #f6faf5;
+}
+.access-proof > svg { color: #438064; }
+.access-settlement {
+  margin: 0 0 0 42px;
+  padding: 13px 0 13px 16px;
+  border-left: 1px dashed #b5c8ba;
+}
+.access-settlement > div { display: flex; flex-direction: column; gap: 5px; }
+.access-settlement > span { color: #839087; font: 8px "Source Code Pro", ui-monospace, monospace; }
+.access-delivery {
+  padding: 15px;
+  border: 1px solid #d7e5d9;
+  border-radius: 8px;
+  background: #eaf3eb;
+}
+.access-delivery-dot { width: 7px; height: 7px; border-radius: 50%; background: #4b936e; box-shadow: 0 0 0 5px rgb(75 147 110 / 10%); }
+.access-unlocked { color: #3c7b5b; border-color: #c9dfcd; }
+.access-visual-foot {
+  margin-top: 17px;
+  padding-top: 13px;
+  border-top: 1px solid #e4ebe4;
+  font-size: 7px;
+}
+.access-strip {
+  max-width: 1184px;
+  margin: 0 auto;
+  padding: 21px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  border-top: 1px solid var(--access-line);
+  border-bottom: 1px solid var(--access-line);
+}
+.access-strip > span { color: #89958d; font: 8px "Source Code Pro", ui-monospace, monospace; letter-spacing: .1em; }
+.access-strip strong { color: #53665b; font-size: 11px; font-weight: 620; letter-spacing: -.02em; }
+.access-strip i { width: 3px; height: 3px; border-radius: 50%; background: #b7c3b8; }
+.access-flow-section, .access-security-section, .access-scope-section {
+  max-width: 1184px;
+  margin: 0 auto;
+  padding: 104px 0;
+}
+.access-section-heading h2, .access-security-section h2, .access-scope-section h2,
+.access-final h2, .access-console-intro h2 {
+  margin: 18px 0 0;
+  color: #1b2a23;
+  font-size: clamp(34px, 4vw, 49px);
+  line-height: 1.06;
+  font-weight: 550;
+  letter-spacing: -.065em;
+}
+.access-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 45px;
+  border-top: 1px solid var(--access-line);
+  border-bottom: 1px solid var(--access-line);
+}
+.access-flow-card {
+  min-height: 220px;
+  padding: 24px 23px 25px;
+  position: relative;
+}
+.access-flow-card:first-child { padding-left: 0; }
+.access-flow-card + .access-flow-card { border-left: 1px solid var(--access-line); }
+.access-flow-card > span { color: #648477; font: 10px "Source Code Pro", ui-monospace, monospace; }
+.access-flow-card h3 { margin: 35px 0 12px; color: #24352d; font-size: 17px; font-weight: 620; letter-spacing: -.035em; }
+.access-flow-card p { max-width: 225px; margin: 0; color: #6c7a71; font-size: 11px; line-height: 1.8; }
+.access-flow-card-line { position: absolute; left: 23px; right: 23px; bottom: 0; height: 2px; background: transparent; transition: background .2s ease; }
+.access-flow-card:hover .access-flow-card-line { background: #5e8b78; }
+.access-flow-card:first-child .access-flow-card-line { left: 0; }
+.access-console {
+  max-width: 1184px;
+  margin: 0 auto;
+  padding: 40px;
+  display: grid;
+  grid-template-columns: .82fr 1.18fr;
+  gap: 65px;
+  align-items: center;
+  border: 1px solid #dce5dc;
+  border-radius: 12px;
+  background: #edf3ed;
+}
+.access-console-intro h2 { font-size: clamp(32px, 3.4vw, 42px); }
+.access-console-intro > p { max-width: 390px; margin: 20px 0 25px; color: #68776d; font-size: 12px; line-height: 1.85; }
+.access-console-points { display: grid; gap: 12px; }
+.access-console-points span { display: flex; align-items: center; gap: 9px; color: #52685c; font-size: 10px; }
+.access-console-points svg { color: #4c806b; }
+.access-console-panel {
+  min-width: 0;
+  padding: 23px;
+  border: 1px solid #dce4dc;
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 14px 36px rgb(35 65 48 / 6%);
+}
+.access-console-top, .access-console-foot, .access-challenge-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: #7a897f;
+  font: 8px "Source Code Pro", ui-monospace, monospace;
+  letter-spacing: .07em;
+}
+.access-console-state { display: inline-flex; align-items: center; gap: 6px; color: #4e8068; }
+.access-console-state i { width: 5px; height: 5px; border-radius: 50%; background: #62a17c; }
+.access-console-label { display: block; margin: 24px 0 9px; color: #35483c; font-size: 10px; font-weight: 650; }
+.access-console-input {
+  width: 100%;
+  min-height: 45px;
+  padding: 0 13px;
+  border: 1px solid #d8e1d9;
+  border-radius: 6px;
+  background: #fbfcfa;
+  color: #203229;
+  font: 11px "Source Code Pro", ui-monospace, monospace;
+}
+.access-console-input:focus { outline: 2px solid rgb(69 126 99 / 18%); border-color: #7ca48c; }
+.access-console-help { margin: 9px 0 15px; color: #849087; font-size: 9px; line-height: 1.7; }
+.access-console-button {
+  width: 100%;
+  min-height: 43px;
+  margin-top: 9px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid #28574b;
+  border-radius: 6px;
+  background: #28574b;
+  color: white;
+  font-size: 10px;
+  font-weight: 650;
+}
+.access-console-button:hover:not(:disabled) { background: #1f493f; }
+.access-console-button.secondary { background: #f3f7f2; color: #315e4e; border-color: #d8e4d9; }
+.access-console-button:disabled { opacity: .45; cursor: not-allowed; }
+.access-console-notice { margin: 25px 0; padding: 16px; border: 1px solid #e4e9e2; border-radius: 6px; background: #f7f9f6; }
+.access-console-notice strong { color: #34483b; font-size: 11px; }
+.access-console-notice p { margin: 7px 0 0; color: #77847b; font-size: 10px; line-height: 1.7; }
+.access-challenge-card { margin-top: 18px; padding: 15px; border: 1px solid #dce7dc; border-radius: 7px; background: #f8fbf7; }
+.access-challenge-heading { color: #4e7b64; }
+.access-challenge-row { display: flex; flex-direction: column; gap: 5px; margin-top: 13px; }
+.access-challenge-row small { color: #849187; font: 8px "Source Code Pro", ui-monospace, monospace; }
+.access-challenge-row code { overflow-wrap: anywhere; color: #34483b; font: 9px "Source Code Pro", ui-monospace, monospace; }
+.access-proof-ready { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; padding: 12px; border: 1px solid #d7e7d8; border-radius: 6px; background: #edf6ee; color: #3b7956; }
+.access-proof-ready div { min-width: 0; display: grid; gap: 5px; }
+.access-proof-ready strong { font-size: 10px; }
+.access-proof-ready small { overflow-wrap: anywhere; color: #718276; font: 8px "Source Code Pro", ui-monospace, monospace; }
+.access-console-inline-error, .access-console-error { color: #ae4d43; font-size: 10px; line-height: 1.6; }
+.access-console-foot { margin-top: 19px; padding-top: 13px; border-top: 1px solid #e8ede7; font-size: 7px; }
+.access-security-section {
+  display: grid;
+  grid-template-columns: 1fr .9fr;
+  gap: 100px;
+  align-items: center;
+}
+.access-security-section > div:first-child > p { max-width: 450px; margin: 20px 0 0; color: #6d7b72; font-size: 12px; line-height: 1.9; }
+.access-security-list { border-top: 1px solid var(--access-line); }
+.access-security-list > div { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--access-line); color: #53665b; font-size: 11px; }
+.access-security-list svg { color: #4d876a; }
+.access-scope-section { padding-top: 75px; border-top: 1px solid var(--access-line); }
+.access-scope-section > p { max-width: 540px; margin: 20px 0 0; color: #6d7b72; font-size: 12px; line-height: 1.9; }
+.access-scope-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
+.access-scope-tags span { padding: 8px 10px; border: 1px solid #dce4dc; border-radius: 4px; color: #607268; background: rgb(255 255 255 / 55%); font: 8px "Source Code Pro", ui-monospace, monospace; }
+.access-status-note { display: flex; align-items: flex-start; gap: 13px; max-width: 600px; margin-top: 35px; padding: 17px; border: 1px solid #e4dfce; border-left: 3px solid #b18a4f; border-radius: 5px; background: #fbf8ef; }
+.access-status-dot { width: 7px; height: 7px; flex: 0 0 7px; margin-top: 4px; border-radius: 50%; background: #b58b4d; }
+.access-status-note strong { color: #665334; font-size: 10px; }
+.access-status-note p { margin: 5px 0 0; color: #8b7c60; font-size: 9px; line-height: 1.7; }
+.access-final {
+  padding: 76px 24px 85px;
+  text-align: center;
+  border-top: 1px solid var(--access-line);
+  background: #edf2ec;
+}
+.access-final h2 { margin: 17px auto 25px; max-width: 700px; }
+.access-final > p { margin: 18px 0 0; color: #7a887e; font-size: 10px; }
+.access-footer {
+  max-width: 1184px;
+  margin: 0 auto;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  color: #7c8980;
+}
+.access-footer > span { flex: 1; font-size: 10px; }
+.access-footer > a:not(.access-brand) { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; }
+.access-footer small { font-size: 9px; }
+.access-footer .access-brand { color: #293a31; font-size: 16px; }
+.access-footer .access-brand-symbol { width: 25px; height: 25px; font-size: 14px; }
+
+@media (max-width: 900px) {
+  .access-nav { padding: 0 28px; }
+  .access-hero { padding: 65px 28px; grid-template-columns: 1fr; gap: 42px; }
+  .access-visual { max-width: 700px; width: 100%; }
+  .access-strip, .access-flow-section, .access-security-section, .access-scope-section, .access-console, .access-footer { margin-left: 28px; margin-right: 28px; }
+  .access-flow-section, .access-security-section, .access-scope-section { padding-top: 75px; padding-bottom: 75px; }
+  .access-console { gap: 30px; padding: 28px; }
+  .access-security-section { gap: 45px; }
+}
+@media (max-width: 620px) {
+  .access-nav { min-height: 68px; padding: 0 20px; }
+  .access-nav nav { display: none; }
+  .access-nav-cta { min-height: 36px; padding: 0 11px; font-size: 10px; }
+  .access-hero { padding: 52px 20px 45px; gap: 34px; }
+  .access-hero h1 { font-size: clamp(43px, 12vw, 58px); }
+  .access-lede { font-size: 12px; }
+  .access-hero-actions { gap: 17px; }
+  .access-caption { margin-top: 25px; font-size: 8px; }
+  .access-visual { padding: 17px 14px 13px; border-radius: 9px; }
+  .access-visual-agent { padding: 13px; gap: 10px; }
+  .access-gate { margin-left: 12px; }
+  .access-proof { margin-left: 12px; padding: 12px; }
+  .access-settlement { margin-left: 24px; }
+  .access-delivery { padding: 12px; }
+  .access-strip { margin: 0 20px; padding: 17px 0; flex-wrap: wrap; justify-content: flex-start; column-gap: 13px; row-gap: 11px; }
+  .access-strip > span { width: 100%; }
+  .access-strip strong { font-size: 9px; }
+  .access-flow-section, .access-security-section, .access-scope-section { margin: 0 20px; padding: 65px 0; }
+  .access-section-heading h2, .access-security-section h2, .access-scope-section h2, .access-final h2 { font-size: 37px; }
+  .access-flow-grid { grid-template-columns: 1fr 1fr; }
+  .access-flow-card { min-height: 190px; padding: 18px 13px; }
+  .access-flow-card:first-child { padding-left: 0; }
+  .access-flow-card:nth-child(3) { border-left: 0; border-top: 1px solid var(--access-line); padding-left: 0; }
+  .access-flow-card:nth-child(4) { border-top: 1px solid var(--access-line); }
+  .access-flow-card h3 { margin-top: 25px; font-size: 15px; }
+  .access-flow-card p { font-size: 10px; }
+  .access-flow-card-line { left: 13px; right: 13px; }
+  .access-console { margin: 0 20px; padding: 22px 16px; grid-template-columns: 1fr; gap: 25px; }
+  .access-console-panel { padding: 17px 13px; }
+  .access-console-intro h2 { font-size: 35px; }
+  .access-console-foot { font-size: 6px; }
+  .access-security-section { grid-template-columns: 1fr; gap: 30px; }
+  .access-scope-section { padding-bottom: 65px; }
+  .access-final { padding: 60px 20px; }
+  .access-footer { margin: 0 20px; padding: 23px 0 35px; flex-wrap: wrap; gap: 14px; }
+  .access-footer > span { flex-basis: calc(100% - 130px); }
+  .access-footer small { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .access-button, .access-flow-card-line, .access-nav-cta { transition: none; }
+}
