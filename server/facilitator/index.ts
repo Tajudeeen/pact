@@ -2,6 +2,12 @@ import { serve } from "@hono/node-server";
 import { createPactConcordiumFacilitator } from "./runtime";
 import { createPactFacilitatorHttpApp } from "./http";
 
+try {
+  process.loadEnvFile("server/facilitator/.env");
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required to start the Concordium facilitator.`);
