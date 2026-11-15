@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, LockKeyhole, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { Link } from "react-router";
 import { OwnerProofConsole } from "../components/OwnerProofConsole";
+import { BrandSplash } from "../components/BrandSplash";
 
 
 const flow = [
@@ -12,7 +13,8 @@ const flow = [
 
 export function Landing() {
   return (
-    <div className="access-landing">
+    <div className="access-landing" id="top">
+      <BrandSplash />
       <header className="access-nav">
         <Link to="/" aria-label="Pact home" className="access-brand"><span className="access-brand-symbol">P</span><span>PACT<span className="access-brand-dot">.</span></span></Link>
         <nav><a href="#flow">How it works</a><a href="#security">Security</a><a href="#scope">Scope</a></nav>
@@ -47,7 +49,25 @@ export function Landing() {
         <section id="scope" className="access-scope-section"><div className="access-kicker">SMALL FIRST. REUSABLE NEXT.</div><h2>one seller. one resource.<br/><em>one proof gate.</em></h2><p>The first build targets one Concordium account-signature requirement and one x402 testnet payment path. The gateway boundary is designed to be reused across protected resources.</p><div className="access-scope-tags"><span>CONCORDIUM SIGNATURE</span><span>AGENT BINDING</span><span>x402</span><span>FAIL-CLOSED GATE</span><span>SANITIZED AUDIT</span></div><div className="access-status-note"><span className="access-status-dot"/><div><strong>Integration work in progress</strong><p>Wallet signing, registry resolution, x402 facilitator, and testnet settlement are not represented as live integrations yet.</p></div></div></section>
         <section className="access-final"><div className="access-kicker">PACT ACCESS</div><h2>paid access should<br/><em>have a verified owner behind it.</em></h2><a className="access-button" href="#flow">Follow the request <ArrowRight size={17}/></a><p>Proof-gated access for autonomous agents.</p></section>
       </main>
-      <footer className="access-footer"><Link to="/" className="access-brand"><span className="access-brand-symbol">P</span><span>PACT<span className="access-brand-dot">.</span></span></Link><span>Proof-gated access for autonomous agents.</span><a href="https://github.com/Tajudeeen/pact" target="_blank" rel="noreferrer">source code <ArrowUpRight size={13}/></a><small>© {new Date().getFullYear()} Pact · independent builder project</small></footer>
+      <footer className="access-footer">
+        <div className="access-footer-top">
+          <div className="access-footer-brand">
+            <Link to="/" aria-label="Pact home" className="access-brand"><span className="access-brand-symbol">P</span><span>PACT<span className="access-brand-dot">.</span></span></Link>
+            <p>proof-gated access for autonomous agents.</p>
+          </div>
+          <nav className="access-footer-nav" aria-label="Footer navigation">
+            <a href="#flow">How it works</a>
+            <a href="#security">Security</a>
+            <a href="#scope">Scope</a>
+          </nav>
+          <a className="access-footer-source" href="https://github.com/Tajudeeen/pact" target="_blank" rel="noreferrer">view source <ArrowUpRight size={14}/></a>
+        </div>
+        <div className="access-footer-bottom">
+          <small>© {new Date().getFullYear()} Pact · independent builder project</small>
+          <span>Concordium · x402 · agent access</span>
+          <a href="#top">Back to top ↑</a>
+        </div>
+      </footer>
     </div>
   );
 }
