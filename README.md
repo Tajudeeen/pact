@@ -30,7 +30,7 @@ This repository is being reworked from its original Somnia/dreamDEX perps protot
 - New product specification: [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md).
 - Integration research and decisions: [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md).
 - The landing page now presents Pact Access. Legacy perps routes are hidden from the app entry points.
-- Concordium testnet/mainnet use canonical CAIP-2 identifiers (`ccd:4221332d34e1694168c2a0c0b3fd0f27` and `ccd:9dd9ca4d19e9393877d2c44b70f89acb`). The official `@x402/concordium` package and Concordium account-signature verification APIs are documented integration paths, not yet wired into Pact.
+- Concordium testnet uses `ccd:4221332d34e1694168c2a0c0b3fd0f27`. The current integration targets the official `@x402/concordium`, `@x402/core`, and `@x402/hono` 2.31.0 packages and Concordium Web SDK 12.0.2.
 - Implemented locally in the branch: request-bound owner-signature message, one-time challenge storage, Concordium account-signature verifier adapter, CIS-8004 owner/agentWallet binding adapter, fail-closed access pipeline, SQLite request/challenge persistence, sanitized audit persistence, and tests.\n- The SDK clients, live registry resolver, x402 facilitator, Hono middleware, and protected resource route are not yet wired. No testnet proof, payment, or delivery evidence is claimed until it exists and can be independently checked.
 
 ## Initial build scope
@@ -54,7 +54,7 @@ This repository is being reworked from its original Somnia/dreamDEX perps protot
 
 ## Development
 
-The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current pipeline has a SQLite repository implementation and typed adapters, but is not yet mounted into the Hono app or connected to the Concordium SDK, live Agent Registry, x402 facilitator, or protected seller endpoint.
+The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current branch has a concrete runtime factory that composes the SQLite repository, Concordium SDK adapters, Agent Registry MCP resolver, and official x402 Hono middleware. It is not yet mounted into the existing application routes. The browser challenge flow, protected seller handler, facilitator deployment, and settlement reconciliation still need to be completed.
 
 See [integration decisions](docs/INTEGRATION_DECISIONS.md) for official SDK paths, trust boundaries, and the remaining implementation checklist.
 
