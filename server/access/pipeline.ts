@@ -367,6 +367,8 @@ export class AccessPipeline<T> {
   ) {
     if (!settlement.transactionReference)
       throw new AccessPipelineError("Confirmed settlement has no transaction reference.", "PAYMENT_NOT_CONFIRMED");
+    if (settlement.payerAccount && settlement.payerAccount !== context.payerAccount)
+      throw new AccessPipelineError("Facilitator-confirmed payer does not match the registered agent wallet.", "PAYMENT_NOT_CONFIRMED");
     if (settlement.network !== context.network) {
       await this.deps.requests.transition(requestId, "payment_pending", "payment_failed", {
         reason: "settlement_network_mismatch",
