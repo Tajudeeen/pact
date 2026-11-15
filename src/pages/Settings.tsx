@@ -1,7 +1,7 @@
 import { LivePrice } from "../components/LiveMarkets";
 import { TradingAccess } from "../components/TradingAccess";
 import { EntryControl } from "../components/EntryControl";
-import { requireTokyo, confirmWallet } from "../wallet";
+import { requireTokyo, confirmWallet, discoverEvmWallets, type EvmWallet } from "../wallet";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
@@ -286,20 +286,42 @@ export function AccountPage() {
   );
   const [error, setError] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
-    [copied, setCopied] = useState(false);
+    [copied, setCopied] = useState(false),
+    [wallets, setWallets] = useState<EvmWallet[]>([]),
+    [selectedWallet, setSelectedWallet] = useState("");
+  useEffect(() => {
+    let active = true;
+    void discoverEvmWallets().then((found) => {
+      if (!active) return;
+      setWallets(found);
+      if (found.length === 1) setSelectedWallet(found[0].id);
+    });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    const provider = wallets.find((wallet) => wallet.id === selectedWallet)?.provider;
+    if (!provider?.on) return;
+    const changed = () => {
+      void api("/auth/logout", { method: "POST", body: {} }).finally(() => void refresh());
+    };
+    provider.on("accountsChanged", changed);
+    provider.on("chainChanged", changed);
+    return () => {
+      provider.removeListener?.("accountsChanged", changed);
+      provider.removeListener?.("chainChanged", changed);
+    };
+  }, [wallets, selectedWallet]);
   const connect = async () => {
     setBusy(true);
     setError(null);
     try {
       if (browserPreview)
-        throw new Error(
-          "Wallet connection is disabled in this build preview. Use a practice session to explore Pact.",
-        );
-      if (!window.ethereum)
-        throw new Error(
-          "Open Pact inside your wallet’s browser to connect. QR pairing is not configured in this version.",
-        );
-      const addresses = (await window.ethereum.request({
+        throw new Error("Wallet connection is unavailable in the current preview build.");
+      const wallet = wallets.find((item) => item.id === selectedWallet);
+      if (!wallet)
+        throw new Error("Choose an injected EVM wallet first. If none appears, install or enable your wallet extension and refresh.");
+      const provider = wallet.provider;
+      const addresses = (await provider.request({
         method: "eth_requestAccounts",
       })) as string[];
       if (!addresses[0]) throw new Error("No wallet account selected.");
@@ -308,11 +330,11 @@ export function AccountPage() {
         addresses[0].toLowerCase() !== config.allowedOwner.toLowerCase()
       )
         throw new Error(
-          "Select the configured owner wallet " +
+          "This backend is currently restricted to the configured owner wallet " +
             config.allowedOwner +
-            " before connecting.",
+            ". Multi-user wallet access is not enabled yet.",
         );
-      await requireTokyo(window.ethereum);
+      await requireTokyo(provider);
       const challenge = await api<{ id: string; message: string }>(
         "/auth/challenge",
         { method: "POST", body: { address: addresses[0] } },
@@ -322,11 +344,11 @@ export function AccountPage() {
         Array.from(new TextEncoder().encode(challenge.message), (b) =>
           b.toString(16).padStart(2, "0"),
         ).join("");
-      const signature = await window.ethereum.request({
+      const signature = await provider.request({
         method: "personal_sign",
         params: [bytes, addresses[0]],
       });
-      await confirmWallet(window.ethereum, addresses[0]);
+      await confirmWallet(provider, addresses[0]);
       await api("/auth/verify", {
         method: "POST",
         body: { id: challenge.id, signature },
@@ -370,9 +392,30 @@ export function AccountPage() {
               : "Connect your wallet"}
           </h2>
           <p className="muted">
-            Use an EVM wallet to sign a time-limited login message. Pact never
-            asks for your owner private key.
+            Choose an injected EVM wallet, switch to Somnia Tokyo, then sign a
+            time-limited login message. Pact never asks for your private key.
           </p>
+          <Field label="Injected wallet">
+            <select
+              value={selectedWallet}
+              onChange={(e) => setSelectedWallet(e.target.value)}
+              disabled={!wallets.length || busy}
+            >
+              <option value="">
+                {wallets.length ? "Choose a wallet" : "No injected wallet detected"}
+              </option>
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}{wallet.rdns ? " · " + wallet.rdns : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {!wallets.length && (
+            <p className="tiny muted">
+              Install or enable an EVM wallet extension, then refresh this page.
+            </p>
+          )}
           {session?.mode === "testnet" && (
             <code className="wallet-address">{session.owner}</code>
           )}
@@ -380,7 +423,7 @@ export function AccountPage() {
           <button
             className="button primary"
             onClick={() => void connect()}
-            disabled={busy || browserPreview}
+            disabled={busy || browserPreview || !selectedWallet}
           >
             {browserPreview
               ? "Wallet unavailable in preview"
@@ -388,7 +431,7 @@ export function AccountPage() {
                 ? "Waiting for wallet…"
                 : session?.mode === "testnet"
                   ? "Switch / reconnect wallet"
-                  : "Connect EVM wallet"}
+                  : "Connect selected wallet"}
             <ArrowUpRight size={16} />
           </button>
           <div className="account-divider" />
