@@ -198,6 +198,77 @@ describe("Pact Access proof and payment pipeline", () => {
     expect(h.audit.some((event) => "identity" in event || "presentation" in event)).toBe(false);
   });
 
+  it("rejects a payment amount or recipient that differs from seller configuration", async () => {
+    const h = harness();
+    await h.pipeline.verifyOwner({
+      requestId: context.requestId,
+      presentation: { account: context.ownerAccount, signature: {} },
+    });
+    await expect(h.pipeline.beginExternalSettlement({
+      requestId: context.requestId,
+      paymentPayload: {
+        value: { sender: context.payerAccount, signedTransaction: {} },
+      },
+      requirement: { ...requirement, amount: "1" },
+    })).rejects.toMatchObject({ code: "PAYMENT_NOT_CONFIRMED" });
+    await expect(h.pipeline.beginExternalSettlement({
+      requestId: context.requestId,
+      paymentPayload: {
+        value: { sender: context.payerAccount, signedTransaction: {} },
+      },
+      requirement: { ...requirement, payTo: "attacker-payout" },
+    })).rejects.toMatchObject({ code: "PAYMENT_NOT_CONFIRMED" });
+    expect(h.state().state).toBe("proof_verified");
+    expect(h.resource.deliver).not.toHaveBeenCalled();
+  });
+
+  it("makes owner proof verification idempotent across the x402 402 retry", async () => {
+    const h = harness();
+    await h.pipeline.verifyOwner({
+      requestId: context.requestId,
+      presentation: { account: context.ownerAccount, signature: {} },
+    });
+    const retry = await h.pipeline.verifyOwner({
+      requestId: context.requestId,
+      presentation: undefined,
+    });
+    expect(retry).toEqual({ status: "verified" });
+    expect(h.proof.verify).toHaveBeenCalledTimes(1);
+    expect(h.challenges.consume).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles a transaction hash after an ambiguous facilitator timeout", async () => {
+    const h = harness();
+    await h.pipeline.verifyOwner({
+      requestId: context.requestId,
+      presentation: { account: context.ownerAccount, signature: {} },
+    });
+    await h.pipeline.beginExternalSettlement({
+      requestId: context.requestId,
+      paymentPayload: {
+        value: { sender: context.payerAccount, signedTransaction: {} },
+      },
+      requirement,
+    });
+    await h.pipeline.recordExternalSettlementFailure(
+      context.requestId,
+      "x402_finalization_failed",
+      "ab".repeat(32),
+    );
+    expect(h.state()).toMatchObject({
+      state: "payment_pending",
+      paymentReference: "ab".repeat(32),
+    });
+
+    const delivered = await h.pipeline.reconcileAndDeliver(context.requestId);
+    expect(delivered).toMatchObject({
+      status: "delivered",
+      paymentReference: "ccd-tx-1",
+      value: "protected dataset",
+    });
+    expect(h.payments.reconcile).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects an x402 sender that differs from the verified owner", async () => {
     const h = harness();
     await h.pipeline.verifyOwner({
