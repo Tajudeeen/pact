@@ -156,6 +156,24 @@ describe("Pact x402 hooks", () => {
     expect(h.pipeline.completeExternalSettlement).not.toHaveBeenCalled();
   });
 
+  it("records a broadcast transaction hash when finalization times out", async () => {
+    const h = harness("payment_pending");
+    const error = Object.assign(new Error("finalization timed out"), {
+      name: "SettleError",
+      errorReason: "finalization_failed",
+      transaction: "ab".repeat(32),
+    });
+    await h.hooks.onSettleFailure({
+      ...h.settleContext,
+      error,
+    });
+    expect(h.pipeline.recordExternalSettlementFailure).toHaveBeenCalledWith(
+      requestId,
+      "x402_finalization_failed",
+      "ab".repeat(32),
+    );
+  });
+
   it("keeps ambiguous facilitator failures pending for reconciliation", async () => {
     const h = harness("payment_pending");
     await h.hooks.onSettleFailure({
@@ -165,6 +183,7 @@ describe("Pact x402 hooks", () => {
     expect(h.pipeline.recordExternalSettlementFailure).toHaveBeenCalledWith(
       requestId,
       "x402_error",
+      undefined,
     );
   });
 });
