@@ -24,7 +24,7 @@ export interface PactAccessPipeline {
     requestId: string,
     settlement: SettlementResult,
   ): Promise<unknown>;
-  recordExternalSettlementFailure(requestId: string, reasonCode: string): Promise<void>;
+  recordExternalSettlementFailure(requestId: string, reasonCode: string, transactionReference?: string): Promise<void>;
 }
 
 interface RequestAdapter {
@@ -257,9 +257,20 @@ export function createPactX402Hooks(pipeline: PactAccessPipeline) {
       if (!requestId) return;
       // A timeout can happen after broadcast. Never mark it failed based only
       // on an exception. Keep the resource locked and require chain reconciliation.
+      const settlementError = context.error as Error & {
+        errorReason?: string;
+        transaction?: string;
+      };
+      const reason = settlementError.errorReason ?? settlementError.name;
+      const transactionReference =
+        typeof settlementError.transaction === "string" &&
+        /^[a-f0-9]{64}$/i.test(settlementError.transaction)
+          ? settlementError.transaction
+          : undefined;
       await pipeline.recordExternalSettlementFailure(
         requestId,
-        "x402_" + context.error.name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+        "x402_" + reason.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+        transactionReference,
       ).catch(() => undefined);
     },
   };
