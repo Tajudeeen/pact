@@ -1,5 +1,3 @@
-import type { AccessContext } from "./contracts";
-
 interface ConcordiumClientSdk {
   AccountAddress: {
     fromBase58(value: string): unknown;
