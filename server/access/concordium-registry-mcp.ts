@@ -39,12 +39,15 @@ function parseAgentRecord(
   value: unknown,
   tokenAddress: string,
   registryId: string,
+  expectedNetwork: "testnet" | "mainnet",
 ): ResolvedCis8004Agent | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   if (
     record.token_address !== tokenAddress ||
+    record.network !== expectedNetwork ||
     typeof record.owner_account !== "string" ||
+    !/^[1-9A-HJ-NP-Za-km-z]{45,55}$/.test(record.owner_account) ||
     (record.status !== "Active" && record.status !== "Revoked")
   ) return null;
 
@@ -54,6 +57,8 @@ function parseAgentRecord(
       : typeof record.agentWallet === "string" && record.agentWallet.length > 0
         ? record.agentWallet
         : null;
+
+  if (wallet && !/^[1-9A-HJ-NP-Za-km-z]{45,55}$/.test(wallet)) return null;
 
   return {
     tokenAddress,
@@ -127,7 +132,7 @@ export class ConcordiumMcpAgentResolver implements Cis8004AgentResolver {
     } catch {
       throw new Error("Concordium registry returned malformed agent data.");
     }
-    return parseAgentRecord(decoded, input.tokenAddress, this.options.registryId);
+    return parseAgentRecord(decoded, input.tokenAddress, this.options.registryId, network);
   }
 
   private async initialize(): Promise<string | null> {
@@ -136,14 +141,15 @@ export class ConcordiumMcpAgentResolver implements Cis8004AgentResolver {
         protocolVersion: "2025-03-26",
         capabilities: {},
         clientInfo: { name: "pact-access", version: "0.1.0" },
-      }).then((result) => result.sessionId).catch((error) => {
+      }).then(async (result) => {
+        await this.call("notifications/initialized", undefined, result.sessionId, false);
+        return result.sessionId;
+      }).catch((error) => {
         this.sessionPromise = null;
         throw error;
       });
     }
-    const sessionId = await this.sessionPromise;
-    await this.call("notifications/initialized", undefined, sessionId, false);
-    return sessionId;
+    return this.sessionPromise;
   }
 
   private async callTool(
