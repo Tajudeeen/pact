@@ -29,12 +29,12 @@ interface ConcordiumNodeSdk {
   };
 }
 
-interface ConcordiumSdkModules {
+export interface ConcordiumSdkModules {
   web: ConcordiumWebSdk;
   node: ConcordiumNodeSdk;
 }
 
-type ModuleLoader = () => Promise<ConcordiumSdkModules>;
+export type ConcordiumSdkModuleLoader = () => Promise<ConcordiumSdkModules>;
 
 const ENDPOINTS: Record<AccessContext["network"], { host: string; port: number }> = {
   "ccd:4221332d34e1694168c2a0c0b3fd0f27": {
@@ -47,7 +47,7 @@ const ENDPOINTS: Record<AccessContext["network"], { host: string; port: number }
   },
 };
 
-const loadConcordiumModules: ModuleLoader = async () => {
+const loadConcordiumModules: ConcordiumSdkModuleLoader = async () => {
   // Dynamic imports keep the core test suite runnable before the optional
   // chain packages are installed on the developer machine.
   const webPackage = "@concordium/web-sdk";
@@ -69,7 +69,7 @@ export class ConcordiumGrpcAccountInfoReader implements ConcordiumAccountInfoRea
     Promise<{ client: InstanceType<ConcordiumNodeSdk["ConcordiumGRPCNodeClient"]>; modules: ConcordiumSdkModules }>
   >();
 
-  constructor(private readonly loadModules: ModuleLoader = loadConcordiumModules) {}
+  constructor(private readonly loadModules: ConcordiumSdkModuleLoader = loadConcordiumModules) {}
 
   async getAccountInfo(
     accountAddress: string,
