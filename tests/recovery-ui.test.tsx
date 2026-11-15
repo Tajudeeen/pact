@@ -1,19 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { App } from "../src/App";
-import { Provider } from "../src/state";
 import { createApp } from "../server/app";
 import { Auth } from "../server/auth";
-import { scanSettlement } from "../server/settlement";
-import { settlementFixture } from "./helpers/settlement";
 import { setup, cleanupExecution } from "./helpers/execution";
 
 afterEach(() => {
@@ -21,158 +12,48 @@ afterEach(() => {
   cleanupExecution();
   vi.unstubAllGlobals();
 });
-describe("owner recovery through React, API and SQLite", () => {
-  it("rechecks a timed-out close and shows confirmed flat without another order", async () => {
-    const x = setup();
-    await x.open();
-    x.observations.close = { state: "pending", fills: [], detail: "pending" };
-    await x.service.close("owner", x.intent.id);
-    x.advance(120001);
-    await x.service.tick();
-    const origin = "http://pact.test";
-    const app = createApp(x.service, origin);
-    const token = new Auth(x.service.store, origin, x.service.now).session(
-      "owner",
-      "testnet",
-    );
-    const fetcher = vi.fn(async (input: string, init?: RequestInit) =>
-      app.request(input, {
-        ...init,
-        headers: {
-          ...(init?.headers as Record<string, string>),
-          origin,
-          cookie: "pact_session=" + token,
-        },
-      }),
-    );
-    vi.stubGlobal("fetch", fetcher);
+
+describe("Pact Access route boundary", () => {
+  it("redirects the retired perps workspace to Pact Access", async () => {
     render(
-      <MemoryRouter initialEntries={["/orders/" + x.intent.id]}>
-        <Provider>
-          <App />
-        </Provider>
+      <MemoryRouter initialEntries={["/app"]}>
+        <App />
       </MemoryRouter>,
     );
-    const button = await screen.findByRole("button", {
-      name: "Check recovery",
-    });
     expect(
-      screen.getByRole("link", { name: /Inspect position in dreamDEX/ }),
+      await screen.findByRole("heading", { name: /agents can pay/i }),
     ).toBeDefined();
-    delete x.observations.close;
-    x.setPosition({ position: "0" });
-    fireEvent.click(button);
-    await screen.findByRole("heading", { name: "Close reconciled" });
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("button", { name: "Check recovery" }),
-      ).toBeNull(),
-    );
-    expect(fetcher.mock.calls.some(([url]) => url.endsWith("/recover"))).toBe(
-      true,
-    );
-    expect(x.intent.state).toBe("closed");
-    expect(x.prepared).toHaveLength(2);
-    expect(x.sends).toBe(2);
+    expect(screen.queryByRole("button", { name: "Check recovery" })).toBeNull();
   });
-  it("rejects recovery by another user and cross-origin requests", async () => {
+
+  it("keeps legacy recovery API authorization and origin checks enforced", async () => {
     const x = setup();
     await x.open();
     x.setPosition({ markValid: false });
     await x.service.tick();
-    const origin = "http://pact.test",
-      app = createApp(x.service, origin);
+    const origin = "http://pact.test";
+    const app = createApp(x.service, origin);
     const auth = new Auth(x.service.store, origin, x.service.now);
     const path = "/api/intents/" + x.intent.id + "/recover";
-    const response = await app.request(path, {
+    const stranger = await app.request(path, {
       method: "POST",
       headers: {
         origin,
         cookie: "pact_session=" + auth.session("stranger", "testnet"),
       },
     });
-    expect(response.status).toBe(404);
-    expect((await response.json()).code).toBe("NOT_FOUND");
-    expect(
-      (
-        await app.request(path, {
-          method: "POST",
-          headers: {
-            origin: "https://evil.test",
-            cookie: "pact_session=" + auth.session("owner", "testnet"),
-          },
-        })
-      ).status,
-    ).toBe(403);
+    expect(stranger.status).toBe(404);
+    expect((await stranger.json()).code).toBe("NOT_FOUND");
+
+    const crossOrigin = await app.request(path, {
+      method: "POST",
+      headers: {
+        origin: "https://evil.test",
+        cookie: "pact_session=" + auth.session("owner", "testnet"),
+      },
+    });
+    expect(crossOrigin.status).toBe(403);
     expect(x.intent.state).toBe("attention");
     expect(x.prepared).toHaveLength(1);
   });
-});
-
-it("verifies costs through the rendered order, authenticated API and SQLite record", async () => {
-  const x = setup();
-  await x.open();
-  await x.service.close("owner", x.intent.id);
-  x.setPosition({ position: "0" });
-  await x.service.tick();
-  const l = settlementFixture();
-  const ledger = await scanSettlement(l.reader, l.ctx);
-  x.venue.settlement = async () => ledger;
-  const origin = "http://pact.test",
-    app = createApp(x.service, origin),
-    auth = new Auth(x.service.store, origin, x.service.now),
-    token = auth.session("owner", "testnet");
-  const fetcher = vi.fn(async (input: string, init?: RequestInit) =>
-    app.request(input, {
-      ...init,
-      headers: {
-        ...(init?.headers as Record<string, string>),
-        origin,
-        cookie: "pact_session=" + token,
-      },
-    }),
-  );
-  vi.stubGlobal("fetch", fetcher);
-  render(
-    <MemoryRouter initialEntries={["/orders/" + x.intent.id]}>
-      <Provider>
-        <App />
-      </Provider>
-    </MemoryRouter>,
-  );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Refresh cost accounting" }),
-  );
-  await screen.findByText("BANK EVENTS RECONCILED");
-  expect(
-    screen.queryByRole("button", { name: "Refresh cost accounting" }),
-  ).toBeNull();
-  expect(x.intent.settlement?.status).toBe("complete");
-  expect(x.sends).toBe(2);
-  const path = "/api/intents/" + x.intent.id + "/accounting";
-  expect(fetcher.mock.calls.some(([url]) => url.endsWith("/accounting"))).toBe(
-    true,
-  );
-  expect(
-    (
-      await app.request(path, {
-        method: "POST",
-        headers: {
-          origin,
-          cookie: "pact_session=" + auth.session("stranger", "testnet"),
-        },
-      })
-    ).status,
-  ).toBe(404);
-  expect(
-    (
-      await app.request(path, {
-        method: "POST",
-        headers: {
-          origin: "https://evil.test",
-          cookie: "pact_session=" + token,
-        },
-      })
-    ).status,
-  ).toBe(403);
 });
