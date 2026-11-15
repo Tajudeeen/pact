@@ -16,6 +16,12 @@ const origin =
     ? `http://localhost:${port}`
     : "http://localhost:5173");
 
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required when PACT_ACCESS_ENABLED=true.`);
