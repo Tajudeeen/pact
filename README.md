@@ -54,7 +54,7 @@ This repository is being reworked from its original Somnia/dreamDEX perps protot
 
 ## Development
 
-The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current branch has a concrete runtime factory that composes the SQLite repository, Concordium SDK adapters, Agent Registry MCP resolver, and official x402 Hono middleware. It is not yet mounted into the existing application routes. The browser challenge flow, protected seller handler, facilitator deployment, and settlement reconciliation still need to be completed.
+The existing repository uses TypeScript, React, Vite, and a Cloudflare Worker. The new gateway and adapters are being introduced behind clear boundaries rather than carrying the old trading runtime into the product. The current branch has a concrete runtime factory that composes the SQLite repository, Concordium SDK adapters, Agent Registry MCP resolver, and official x402 Hono middleware. It is not yet mounted into the existing application routes. The facilitator deployment and buyer-agent signer still need to be configured, then the full flow must be tested on Concordium testnet.
 
 See [integration decisions](docs/INTEGRATION_DECISIONS.md) for official SDK paths, trust boundaries, and the remaining implementation checklist.
 
