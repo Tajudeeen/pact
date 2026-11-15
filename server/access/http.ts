@@ -41,12 +41,14 @@ export function createPactAccessHttpRoutes(
   );
 
   app.post("/api/access/challenges", async (c) => {
-    const body = z.object({
+    const parsed = z.object({
       buyerAgentId: z.string().min(20).max(80).regex(/^[1-9A-HJ-NP-Za-km-z]+$/),
-    }).strict().parse(await c.req.json());
+    }).strict().safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success)
+      return c.json({ error: "A valid buyerAgentId is required." }, 400);
 
     try {
-      const challenge = await runtime.issueChallengeForAgent(body.buyerAgentId);
+      const challenge = await runtime.issueChallengeForAgent(parsed.data.buyerAgentId);
       c.header("Cache-Control", "no-store");
       return c.json(challenge, 201);
     } catch {
