@@ -45,7 +45,7 @@ Official docs:
 
 Concordium's x402 integration is in the official x402 repository and has a dedicated TypeScript package:
 
-`@x402/concordium@2.28.0`
+`@x402/concordium@2.31.0`
 
 It implements the Exact scheme with sponsored V1 transactions and includes client, server, and facilitator components. The package's server scheme parses fixed prices and enriches requirements with the facilitator's `feePayer`. The facilitator validates the sender, sponsor, recipient, exact amount, asset, expiry, sender signature, and transaction safety, then submits and waits for finalization.
 
@@ -55,13 +55,17 @@ Official sources:
 - Hono middleware: https://www.npmjs.com/package/@x402/hono
 - Official x402 facilitator responsibilities: https://github.com/x402-foundation/x402/blob/main/docs/core-concepts/facilitator.md
 
-For Hono, register the package's `ExactConcordiumScheme` with `x402ResourceServer`, configure the `@x402/hono` `paymentMiddleware`, and protect the seller resource route. Use a facilitator endpoint that advertises the Concordium testnet network and Exact scheme. Do not assume the default `https://x402.org/facilitator` supports Concordium. The Concordium facilitator must be configured with a sponsor account and its private key kept server-side.
+The current official TypeScript packages are `@x402/concordium@2.31.0`, `@x402/core@2.31.0`, and `@x402/hono@2.31.0`. The Concordium package implements x402 protocol V2 using a partially signed Concordium V1 sponsored transaction. Its server scheme defaults to the `authorization` payment flow, which settles before the resource handler. For Hono, register the package's `ExactConcordiumScheme` with `x402ResourceServer`, then wrap it in `x402HTTPResourceServer` and `paymentMiddlewareFromHTTPServer`. Use a facilitator endpoint that advertises the Concordium testnet network and Exact scheme. Do not assume the default `https://x402.org/facilitator` supports Concordium. The Concordium facilitator must be configured with a sponsor account and its private key kept server-side.
 
-The access pipeline exposes the lifecycle needed by x402 hooks:
-- The owner-signature middleware calls `verifyOwner` before passing the request to x402.
-- `x402ResourceServer.onBeforeSettle` calls `beginExternalSettlement` after payment verification. It checks the x402 sender, resource, amount, asset, recipient, and network before settlement.
-- `x402ResourceServer.onAfterSettle` calls `completeExternalSettlement` with the finalized transaction reference and network.
-- The protected Hono handler calls `deliverPaidResource`. It returns bytes only when the stored state is `paid`.
+The implementation now exposes concrete adapters in `server/access/concordium-node.ts`, `server/access/concordium-registry-mcp.ts`, `server/access/x402-hooks.ts`, and `server/access/x402-runtime.ts`. `createPactAccessRuntime` composes these with the SQLite repository, challenge issuer, pipeline, and seller-owned resource callback. It remains dynamically loaded until the developer installs the pinned packages and regenerates the lockfile.
+
+The x402 lifecycle is wired as follows:
+- `x402HTTPResourceServer.onProtectedRequest` calls `verifyOwner` before x402 emits payment requirements. It reads `x-pact-access-request` and `x-pact-owner-proof` headers. The proof header is base64url-encoded JSON containing the Concordium account and wallet signature.
+- `x402ResourceServer.onBeforeSettle` calls `beginExternalSettlement` after facilitator verification. It checks the x402 sender, canonical resource URL, amount, asset, recipient, and network against the seller's server-side payment configuration before settlement.
+- `x402ResourceServer.onAfterSettle` calls `completeExternalSettlement` with the finalized transaction reference, network, and facilitator-confirmed payer. If the persistence step fails, the hook throws an `AfterSettleAbortError` so x402 fails the HTTP settlement closed.
+- The protected Hono handler calls `deliverPaidResource`. It returns bytes only when the stored state is `paid`. If a prior request is already paid but the handler did not run, `onProtectedRequest` skips another charge and grants the handler access to complete delivery.
+
+Ambiguous settlement failures remain in `payment_pending` and are blocked from another charge until reconciliation. The current runtime intentionally fails closed because the direct Concordium transaction-reconciliation adapter is still outstanding.
 
 This keeps x402 responsible for its standard 402/verify/settle flow while Pact owns the owner gate, agentWallet binding, access state, audit, and delivery boundary.
 
