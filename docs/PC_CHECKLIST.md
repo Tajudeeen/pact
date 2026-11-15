@@ -27,7 +27,7 @@ corepack prepare pnpm@11.25.0 --activate
 The package versions below are the documented stable versions checked for this branch. Add them exactly and commit the generated lockfile:
 
 ```powershell
-pnpm add -E @x402/concordium@2.28.0 @x402/core@2.28.0 @x402/hono@2.28.0 @x402/fetch@2.28.0 @concordium/web-sdk@12.0.2 @concordium/browser-wallet-api-helpers@3.3.0 @grpc/grpc-js
+pnpm add -E @x402/concordium@2.31.0 @x402/core@2.31.0 @x402/hono@2.31.0 @concordium/web-sdk@12.0.2 @concordium/browser-wallet-api-helpers@3.3.0
 ```
 
 Do not add any private key to source code or a committed env file.
@@ -78,9 +78,9 @@ The agentWallet private key belongs only in the buyer-agent runtime. The facilit
 
 1. Browser: use `detectConcordiumProvider()`, connect the owner account, and call `provider.signMessage(ownerAccount, message)` with the exact server-issued message.
 2. Backend: use `@concordium/web-sdk` and a testnet gRPC client to fetch fresh account information. Verify the returned signature with `verifyMessageSignature`. Never accept account information supplied by the browser.
-3. Registry: resolve the agent against the configured trusted CIS-8004 contract. Derive `ownerAccount` and `agentWallet` from the live record, require `Active`, and verify the signed owner account matches the record owner.
-4. Payment: configure `ExactConcordiumScheme` and `paymentMiddleware` in Hono. Use a Concordium-capable facilitator, not the default x402.org facilitator. Keep `requireFinalization: true`.
-5. Binding: before verification/settlement, require the x402 payload sender to equal the agent's current on-chain `agentWallet`. The registered owner signature and payment sender are intentionally different accounts.
+3. Registry: use `ConcordiumMcpAgentResolver` against the official Agent Registry MCP endpoint (`https://agent-registry-mcp.concordium.com/mcp`). Pin `CONCORDIUM_AGENT_REGISTRY_ID` to the confirmed testnet CIS-8004 contract identifier. The resolver reads `agent_by_token_address` from chain and returns owner, status, and `agent_wallet`. Derive `ownerAccount` and `agentWallet` from this live record, require `Active`, and verify the signed owner account matches the record owner.
+4. Payment: mount the middleware returned by `createPactAccessRuntime`. It wires `@x402/hono`, `@x402/core`, and `@x402/concordium` using the Concordium Exact scheme. Use a Concordium-capable facilitator, not the default x402.org facilitator. Keep finalization required.
+5. Binding: send `x-pact-access-request` and a base64url JSON `x-pact-owner-proof` header containing `{account, signature}`. The x402 hooks verify the owner before payment processing, then require the x402 payload sender to equal the agent's current on-chain `agentWallet`. The registered owner signature and payment sender are intentionally different accounts.
 6. Delivery: release the protected resource only after the facilitator confirms finalized settlement. The resource handler must never run on missing proof, invalid proof, wrong payer, pending settlement, or facilitator failure.
 
 ## 6. Test the failure paths
@@ -116,4 +116,4 @@ For every blocked case, verify that no protected bytes are returned.
 
 The branch now contains the Pact Access landing, owner-signature message/verifier adapter, CIS-8004 binding adapter, server-issued challenge flow, SQLite request/challenge repository, fail-closed pipeline, state machine, and tests.
 
-The browser wallet, real Concordium node client, live registry resolver, x402 Hono middleware/facilitator, protected seller route, testnet transactions, and deployment are still outstanding. No live integration or test pass is claimed.
+The branch now includes concrete dynamic-loading adapters for the Concordium SDK, the official Agent Registry MCP lookup, x402 Hono middleware construction, and x402 lifecycle hooks. The PC still needs to install the pinned packages and generate the lockfile, connect the browser wallet, expose the challenge endpoint and seller handler, configure the testnet registry ID and facilitator, implement settlement reconciliation, and produce real testnet transaction evidence. No live transaction or deployment is claimed.
