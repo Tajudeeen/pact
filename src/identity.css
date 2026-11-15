@@ -1901,7 +1901,7 @@ body {
   gap: 22px;
   background: #f8faf7;
   color: #1c2c24;
-  animation: access-splash-exit .42s ease 0.78s both;
+  animation: access-splash-exit .42s ease 1.38s both;
 }
 .access-splash-lockup {
   display: flex;
