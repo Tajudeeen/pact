@@ -28,7 +28,7 @@ interface X402HttpServerInstance {
   onProtectedRequest(hook: ReturnType<typeof createPactX402Hooks>["onProtectedRequest"]): this;
 }
 
-interface X402RuntimeModules {
+export interface X402RuntimeModules {
   HTTPFacilitatorClient: new (options: { url: string }) => unknown;
   ExactConcordiumScheme: new () => unknown;
   x402ResourceServer: new (client: unknown) => X402ResourceServerInstance;
