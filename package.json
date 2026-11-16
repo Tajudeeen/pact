@@ -30,7 +30,11 @@
     "verify": "node scripts/verify.mjs",
     "evidence:collect": "node scripts/collect-evidence.mjs",
     "facilitator": "tsx server/facilitator/index.ts",
-    "facilitator:dev": "tsx watch server/facilitator/index.ts"
+    "facilitator:dev": "tsx watch server/facilitator/index.ts",
+    "access:dev": "wrangler dev --config wrangler.access.jsonc",
+    "access:deploy": "wrangler deploy --config wrangler.access.jsonc",
+    "access:migrate:local": "wrangler d1 migrations apply pact-access --local --config wrangler.access.jsonc",
+    "access:migrate:remote": "wrangler d1 migrations apply pact-access --remote --config wrangler.access.jsonc"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
