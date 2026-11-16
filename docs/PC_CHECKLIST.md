@@ -1,141 +1,107 @@
-# Pact Access: PC implementation checklist
+# Pact Access PC checklist
 
-PR #9 is already merged as the first product pivot. Continue from the phase-two draft PR #11. Do not merge PR #11 until the real testnet flow and checks pass.
+This is the current setup guide for the Concordium Trusted Agents build. The previous Somnia/dreamDEX instructions are historical and are no longer part of the active release path.
 
-## 1. Pull the branch
+## Current live state
 
-Run in PowerShell from the Pact repository:
+- Frontend: https://pact-access.vercel.app
+- Main access Worker: pact-access-api
+- Facilitator Worker URL: https://pact-access-facilitator.tajudeenisah02.workers.dev
+- Database: Cloudflare D1, pact-access
+- Network: Concordium testnet, CAIP-2 ccd:4221332d34e1694168c2a0c0b3fd0f27
+- Trusted CIS-8004 registry: contract 12802,0
 
-```powershell
-git status
-git fetch origin
-git switch concordium/pact-access-phase-2
-git pull --ff-only
-node --version
-pnpm --version
-```
+The main Worker issues 90-second owner challenges, verifies owner signatures against fresh finalized testnet account credentials, and extends a successful request to a 12-minute payment window. It refreshes the CIS-8004 owner and agentWallet binding before accepting the proof.
 
-Required Node: `>=24.13`. If pnpm is missing and Corepack is available:
+The facilitator URL currently runs a fail-closed placeholder. Payment health says x402: not-deployed, and the protected-resource route returns HTTP 503. The full facilitator source passes TypeScript and Wrangler build checks, but its bundle is not deployed.
 
-```powershell
-corepack enable
-corepack prepare pnpm@11.25.0 --activate
-```
+## 1. Enable the facilitator deployment workflow
 
-## 2. Install the pinned integration packages
+1. In Cloudflare, open https://dash.cloudflare.com/profile/api-tokens.
+2. Create a custom token scoped to the Pact Cloudflare account only.
+3. Give it only these account permissions: Workers Scripts Edit and D1 Edit.
+4. In GitHub, open Tajudeeen/pact, then Settings, Secrets and variables, Actions.
+5. Add one repository secret named CLOUDFLARE_API_TOKEN.
+6. Never paste the token into chat, source code, commits, or issues.
+7. Open Actions, then Pact Access facilitator Worker build, then choose Run workflow.
 
-The package versions below are the documented stable versions checked for this branch. Add them exactly and commit the generated lockfile:
+The account ID is already in the workflow as a non-secret value. The workflow installs dependencies, type-checks, bundles the Worker, applies the resource migration, deploys the Worker, and confirms payment remains disabled. The latest facilitator build passed the build steps. Deployment skipped because the secret is not present yet.
 
-```powershell
-pnpm add -E @x402/concordium@2.31.0 @x402/core@2.31.0 @x402/hono@2.31.0 @x402/fetch@2.31.0 @concordium/web-sdk@12.0.2 @concordium/browser-wallet-api-helpers@3.3.0 @grpc/grpc-js
-```
+## 2. Configure the testnet facilitator
 
-Do not add any private key to source code or a committed env file.
+Do not enable payments until the following values are confirmed.
 
-## 3. Run checks before integration
+Worker variables:
+- PACT_ACCESS_PRICE_ATOMIC: positive integer in micro-CCD.
+- PACT_SELLER_PAY_TO: seller's Concordium testnet account.
+- CCD_FACILITATOR_ADDRESS: funded sponsor account that pays network fees.
 
-```powershell
-pnpm install --frozen-lockfile
-pnpm verify
-pnpm typecheck
-pnpm test
-pnpm build
-```
+Worker secrets:
+- CCD_FACILITATOR_PRIVATE_KEY: hex-encoded Ed25519 private key for the sponsor account.
+- PACT_RESOURCE_ADMIN_KEY: separate random bearer secret for resource uploads.
 
-Stop at the first failure. Save the full output, fix it, and rerun the failed check. Don't report a check as passed until its exit code is zero.
+Keep the sponsor private key and resource-admin key in Cloudflare Worker secrets. Do not put them in Wrangler vars, GitHub source, the browser, or this chat.
 
-## 4. Configure testnet identities and secrets
+## 3. Prepare a valid buyer agent
 
-Use Concordium testnet only. The network ID is:
+Register a real testnet agent using the trusted CIS-8004 registry. Its badge must pass the official checks:
 
-```text
-ccd:4221332d34e1694168c2a0c0b3fd0f27
-```
+- Token address points to trusted contract 12802,0.
+- Registry record is active.
+- The current owner account is present.
+- Agent Card is reachable.
+- Agent Card hash matches the on-chain metadata hash.
+- Badge, token address, chain, owner, and contract fields match.
+- A valid on-chain agentWallet is registered.
 
-The official testnet gRPC endpoint documented by the x402 package is:
+The public sample badges inspected so far failed one or more checks. Do not bypass the verifier to make an old badge pass. Register or repair a real testnet agent, then check it using the live endpoint:
 
-```text
-grpc.testnet.concordium.com:20000
-```
+https://pact-access.vercel.app/api/access/registry/<CIS-8004-token-address>
 
-Create a testnet seller account, a registered agent owner account, a separate agent payment account, and a dedicated facilitator sponsor account. Fund the buyer agent wallet for the resource payment and fund the facilitator sponsor for network fees. On Windows PowerShell, copy the templates with `Copy-Item .env.example .env` and `Copy-Item server\facilitator\.env.example server\facilitator\.env`. Create the protected folder with `New-Item -ItemType Directory -Force .data\protected`. Place the actual dataset or resource file there. Set `PACT_ACCESS_RESOURCE_FILE` to its filename relative to that directory. Never commit the protected file unless it is intended to be public. Register the agent in the trusted CIS-8004 testnet registry, then set its `agentWallet` to the payment account. CIS-8004 requires the owner to authorize that change and the new wallet to prove control.
+A valid response has status verified, ownerAccount, and payerAccount. A rejected badge returns 403. A registry outage returns 503.
 
-Do not assume the mainnet registry contract index is also the testnet address. Confirm the exact testnet registry contract and configure its canonical CAIP-10 ID.
+## 4. Upload a protected resource
 
-Set `PACT_ACCESS_ENABLED=true` only after all values below are configured. `PACT_ACCESS_RESOURCE_URL` must be the exact public HTTPS URL advertised to x402, and `PACT_ACCESS_ROUTE` must match the route used by the buyer. Set `PACT_ORIGIN` to the actual Pact app origin so the existing origin and rate-limit middleware protects the challenge endpoint.
+After the facilitator Worker is deployed and PACT_RESOURCE_ADMIN_KEY is set, run this in PowerShell. Keep the key in a local environment variable.
 
-Keep the seller values in the seller app environment. Put `CCD_FACILITATOR_ADDRESS`, `CCD_FACILITATOR_PRIVATE_KEY`, `CCD_FINALIZATION_TIMEOUT_MS`, and the shared `X402_FACILITATOR_TOKEN` only in the separate facilitator service. Put `PACT_AGENT_WALLET_ADDRESS` and `PACT_AGENT_WALLET_PRIVATE_KEY` only in the buyer-agent process, using `docs/buyer-agent.env.example`.
+~~~powershell
+$env:PACT_RESOURCE_ADMIN_KEY = "<your-resource-admin-secret>"
+$headers = @{ Authorization = "Bearer $env:PACT_RESOURCE_ADMIN_KEY" }
+$body = @{
+  resourceId = "https://pact-access.vercel.app/api/access/resource"
+  contentType = "application/json"
+  content = '{"dataset":"pact-test","rows":[{"id":1,"value":"protected"}]}'
+} | ConvertTo-Json -Depth 8
+Invoke-RestMethod -Method Put -Uri "https://pact-access.vercel.app/api/access/resources" -Headers $headers -ContentType "application/json" -Body $body
+~~~
 
-Keep these seller values in local secrets or the deployment secret manager:
+The resource limit is 256 KiB. Supported content types are application/json, text/csv, and text/plain.
 
-- `PACT_ACCESS_SELLER_ID`
-- `PACT_ACCESS_RESOURCE_URL`
-- `PACT_ACCESS_ROUTE`
-- `PACT_ACCESS_PRICE_ATOMIC`
-- `PACT_ACCESS_ASSET`
-- `PACT_ACCESS_RESOURCE_ROOT`
-- `PACT_ACCESS_RESOURCE_FILE`
-- `PACT_ACCESS_DESCRIPTION`
-- `PACT_ACCESS_MIME_TYPE`
-- `PACT_SELLER_PAY_TO`
-- `CONCORDIUM_AGENT_REGISTRY_ID`
-- `CONCORDIUM_AGENT_REGISTRY_MCP_URL`
-- `X402_FACILITATOR_URL`
-- `CCD_FACILITATOR_ADDRESS`
-- `CCD_FACILITATOR_PRIVATE_KEY`
-- `PACT_AGENT_WALLET_ADDRESS`
-- `PACT_AGENT_WALLET_PRIVATE_KEY`
+## 5. Run the buyer agent
 
-The agentWallet private key belongs only in the buyer-agent runtime. The facilitator sponsor key belongs only in the facilitator service. Never place either key in the browser or Git. The file-backed resource adapter resolves symlinks and enforces a 5 MB default size limit.
+Use the verified request ID shown by the owner console. Keep the registered agent wallet private key only in the local shell or a secret manager.
 
-## 5. Finish the live integrations
+~~~powershell
+cd cloudflare/facilitator-worker
+npm install
+$env:PACT_ACCESS_REQUEST_ID = "<verified-request-uuid>"
+$env:PACT_BUYER_AGENT_WALLET_ADDRESS = "<registered-agentWallet>"
+$env:PACT_BUYER_AGENT_WALLET_PRIVATE_KEY = "<agentWallet-private-key>"
+npm run demo:buyer
+~~~
 
-1. Browser: use the helper in `src/access/concordium-wallet.ts` to call `detectConcordiumProvider()`, connect the owner account, and sign the exact server-issued message. Send its returned `headerValue` as `x-pact-owner-proof`. This proves control of the registered owner account. It is not a ZK proof of an age or other identity attribute.
-2. Backend: use `@concordium/web-sdk` and a testnet gRPC client to fetch fresh account information. Verify the returned signature with `verifyMessageSignature`. Never accept account information supplied by the browser.
-3. Registry: use `ConcordiumMcpAgentResolver` against the official Agent Registry MCP endpoint (`https://agent-registry-mcp.concordium.com/mcp`). Pin `CONCORDIUM_AGENT_REGISTRY_ID` to the confirmed testnet CIS-8004 contract identifier. The resolver reads `agent_by_token_address` from chain and returns owner, status, and `agent_wallet`. Derive `ownerAccount` and `agentWallet` from this live record, require `Active`, and verify the signed owner account matches the record owner.
-4. Payment: mount the middleware returned by `createPactAccessRuntime`. It wires `@x402/hono`, `@x402/core`, and `@x402/concordium` using the Concordium Exact scheme. Use the self-hosted service in `server/facilitator/index.ts`, not the default x402.org facilitator. Deploy it separately from the seller app with the environment in `server/facilitator/.env.example`. It registers the official Exact Concordium facilitator with finalization required and allowlists only the configured resource URL, seller payout account, amount, asset, and testnet. Set CCD_FACILITATOR_RESOURCE_URL, CCD_FACILITATOR_PAY_TO, CCD_FACILITATOR_AMOUNT_ATOMIC, and CCD_FACILITATOR_ASSET in the facilitator environment. Set the seller app's `X402_FACILITATOR_URL` to that service's public HTTPS base URL. Generate a random 32-byte bearer token in PowerShell with `$bytes = New-Object byte[] 32; $rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $rng.GetBytes($bytes); [Convert]::ToBase64String($bytes)`. Set the same value as `X402_FACILITATOR_TOKEN` in the seller app and facilitator service. The facilitator requires this token for `/supported`, `/verify`, and `/settle`. The runtime uses Concordium `getBlockItemStatus` to reconcile a transaction hash after a facilitator timeout.
-5. Binding: send `x-pact-access-request` and the base64url JSON `x-pact-owner-proof` header returned by the wallet helper. The buyer helper in `server/access/buyer-agent.ts` builds the x402 client and sends both headers. The x402 hooks verify the owner before payment processing, then require the x402 payload sender to equal the agent's current on-chain `agentWallet`. The registered owner signature and payment sender are intentionally different accounts.
-6. Delivery: release the protected resource only after the facilitator confirms finalized settlement. The resource handler must never run on missing proof, invalid proof, wrong payer, pending settlement, or facilitator failure.
+The CLI uses the official Concordium x402 client. If Pact returns HTTP 202, the transaction may already be broadcast. Reuse the same request ID to reconcile it. Do not make a second payment.
 
-## 6. Test the failure paths
+## 6. Evidence required before submission
 
-- no owner signature;
-- signature from a different account;
-- modified message, wrong request, wrong network, or expired challenge;
-- replayed challenge;
-- revoked agent or untrusted registry;
-- registry owner mismatch;
-- payer does not match current `agentWallet`;
-- x402 amount, asset, or recipient mismatch;
-- pending, failed, or timed-out settlement;
-- facilitator/node outage;
-- duplicate request and duplicate delivery attempt; confirm delivery state and receipt commit atomically.
+- Valid testnet badge passes the official Agent Registry verifier.
+- Owner signs the exact 90-second challenge in Concordium Browser Wallet.
+- Pact accepts only the current owner and current agentWallet.
+- Buyer agent receives x402 requirements and pays from that registered wallet.
+- Facilitator sponsors the transaction fee and waits for finalization.
+- Pact verifies payer, recipient, amount, and CCD asset.
+- Exact protected bytes are returned after the paid state is committed.
+- Transaction hash opens in CCDScan.
+- Invalid badge, wrong owner, changed wallet, bad signature, replay, expiry, wrong payer, failed finality, and registry outage all fail closed.
 
-For every blocked case, verify that no protected bytes are returned.
-
-## 7. Buyer agent
-
-Use `createPactBuyerFetch` only in the server-side buyer-agent process. Load the registered `agentWallet` private key from a secret store. Call the challenge endpoint first, sign the returned message with the owner wallet, then call the protected resource using `pactBuyerHeaders`. The x402 fetch wrapper handles the 402/payment retry and signs the sponsored transaction from the agentWallet.
-
-## 8. Facilitator deployment
-
-From the repository root, run `pnpm facilitator` in a separate terminal. The entry point loads `server/facilitator/.env` itself. The seller app loads the root `.env`. Expose its `/supported`, `/verify`, and `/settle` routes over HTTPS. Confirm `/supported` advertises the Concordium testnet and Exact scheme before pointing the seller app at it. Never deploy the facilitator sponsor key alongside the seller's resource server.
-
-## 9. Demo evidence
-
-- [ ] First request returns an owner-signature challenge, no resource bytes.
-- [ ] Owner signs the exact request-bound message in Concordium Wallet.
-- [ ] Backend verifies the signature against fresh account credentials.
-- [ ] Live CIS-8004 resolution confirms active owner and agentWallet.
-- [ ] Buyer agent pays from the registered agentWallet through x402.
-- [ ] Facilitator confirms finalization on testnet.
-- [ ] Protected resource is delivered once, after settlement.
-- [ ] CCDExplorer transaction link and sanitized audit record are visible.
-- [ ] Invalid proof, wrong payer, and failed/pending payment never deliver.
-- [ ] Demo labels any simulation or fixture honestly.
-
-## Current remote implementation boundary
-
-The branch now contains the Pact Access landing, owner-signature message/verifier adapter, CIS-8004 binding adapter, server-issued challenge flow, SQLite request/challenge repository, fail-closed pipeline, state machine, and tests.
-
-The branch now includes dynamic-loading adapters for the Concordium SDK, official Agent Registry MCP lookup, x402 Hono middleware, x402 lifecycle hooks, finality-based reconciliation, challenge/resource routes, browser owner signing, and a server-side buyer-agent payment wrapper. The server now mounts the router when `PACT_ACCESS_ENABLED=true`. The PC still needs to install the pinned packages and generate the lockfile, deploy the separate facilitator service, configure the testnet registry ID and seller endpoint, choose and place a real protected file, load the agentWallet secret into the buyer runtime, and produce real testnet transaction evidence. If a facilitator failure has no transaction hash, the request remains pending for manual review. No live transaction or deployment is claimed.
+No genuine owner proof, CCD payment, CCDScan transaction link, or protected resource delivery has been demonstrated yet. Do not describe the end-to-end flow as complete until those checks pass.
