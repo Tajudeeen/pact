@@ -14,6 +14,7 @@ interface AccessChallenge {
 interface SignedProof {
   account: string;
   verifiedAt: string;
+  expiresAt: string;
 }
 
 const agentIdPattern = /^[1-9A-HJ-NP-Za-km-z]{20,80}$/;
@@ -35,6 +36,9 @@ export function OwnerProofConsole() {
   const remainingMs = challenge ? Math.max(0, Date.parse(challenge.expiresAt) - clock) : 0;
   const expired = Boolean(challenge && remainingMs === 0);
   const remainingLabel = `${Math.floor(remainingMs / 60_000)}:${String(Math.floor((remainingMs % 60_000) / 1000)).padStart(2, "0")}`;
+  const accessRemainingMs = proof ? Math.max(0, Date.parse(proof.expiresAt) - clock) : 0;
+  const accessExpired = Boolean(proof && accessRemainingMs === 0);
+  const accessRemainingLabel = `${Math.floor(accessRemainingMs / 60_000)}:${String(Math.floor((accessRemainingMs % 60_000) / 1000)).padStart(2, "0")}`;
 
   const issueChallenge = async () => {
     setBusy("challenge");
@@ -72,6 +76,7 @@ export function OwnerProofConsole() {
         status: "verified";
         verifiedAccount: string;
         verifiedAt: string;
+        expiresAt: string;
         policyId: string;
       }>("/access/proofs", {
         method: "POST",
@@ -84,13 +89,16 @@ export function OwnerProofConsole() {
         verification.status !== "verified" ||
         verification.requestId !== challenge.requestId ||
         verification.verifiedAccount !== walletProof.account ||
-        !Number.isFinite(Date.parse(verification.verifiedAt))
+        !Number.isFinite(Date.parse(verification.verifiedAt)) ||
+        !Number.isFinite(Date.parse(verification.expiresAt)) ||
+        Date.parse(verification.expiresAt) <= Date.now()
       ) {
         throw new Error("Pact could not confirm the owner signature. The resource remains locked.");
       }
       setProof({
         account: walletProof.account,
         verifiedAt: verification.verifiedAt,
+        expiresAt: verification.expiresAt,
       });
     } catch (cause) {
       if (cause instanceof ApiError && [401, 403, 409, 410].includes(cause.status)) {
@@ -104,7 +112,7 @@ export function OwnerProofConsole() {
   };
 
   const copyHandoff = async () => {
-    if (!challenge || !proof || expired) return;
+    if (!challenge || !proof || accessExpired) return;
     const handoff = JSON.stringify({
       method: "GET",
       url: "/api/access/resource",
@@ -117,7 +125,7 @@ export function OwnerProofConsole() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      setError("Clipboard access failed. Copy the request ID and proof header from your buyer-agent environment.");
+      setError("Clipboard access failed. Copy the verified request ID into your buyer-agent configuration.");
     }
   };
 
@@ -168,7 +176,7 @@ export function OwnerProofConsole() {
             {!validAgent && agentId.length > 0 && <p className="access-console-inline-error">Enter a valid base58 CIS-8004 token address.</p>}
             {challenge && (
               <div className="access-challenge-card">
-                <div className="access-challenge-heading"><span>CHALLENGE ISSUED</span><span>{expired ? "EXPIRED" : `EXPIRES IN ${remainingLabel}`}</span></div>
+                <div className="access-challenge-heading"><span>{proof ? "OWNER VERIFIED" : "CHALLENGE ISSUED"}</span><span>{proof ? (accessExpired ? "ACCESS WINDOW EXPIRED" : `ACCESS WINDOW ${accessRemainingLabel}`) : (expired ? "EXPIRED" : `SIGN WITHIN ${remainingLabel}`)}</span></div>
                 <div className="access-challenge-row"><small>REQUEST ID</small><code>{challenge.requestId}</code></div>
                 <div className="access-challenge-row"><small>POLICY</small><code>{challenge.policyId}</code></div>
                 <p className="access-console-help">The message binds your owner signature to this request, agent, seller, resource and payment wallet.</p>
@@ -183,7 +191,7 @@ export function OwnerProofConsole() {
                   </button>
                 )}
                 {proof && (
-                  <button className="access-console-button" onClick={() => void copyHandoff()} disabled={expired}>
+                  <button className="access-console-button" onClick={() => void copyHandoff()} disabled={accessExpired}>
                     {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
                   </button>
                 )}
