@@ -40,6 +40,17 @@ interface FinalizedInfo {
   asset?: string;
 }
 
+interface SettlementSigner {
+  getAddress(): string;
+  getNetwork(): string;
+  getAccountInfo(address: string): Promise<unknown>;
+  addSponsorSignature(tx: any): Promise<any>;
+  submitTransaction(tx: any): Promise<string>;
+  waitForFinalization(txHash: string, timeoutMs?: number): Promise<FinalizedInfo>;
+  getTokenBalance(address: string, tokenId: string): Promise<bigint | undefined>;
+  getTokenDecimals(tokenId: string): Promise<number>;
+}
+
 function json(
   data: unknown,
   status = 200,
