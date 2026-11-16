@@ -21,6 +21,22 @@ function json(data, status = 200, origin = "") {
   return new Response(JSON.stringify(data), { status, headers });
 }
 
+function isAllowedBrowserRequest(request, expectedOrigin) {
+  const origin = request.headers.get("Origin");
+  if (origin) return origin === expectedOrigin;
+
+  // Vercel rewrites proxy the request to the Worker and may omit Origin.
+  // Accept only a Referer whose parsed origin exactly matches the configured
+  // frontend. Requests with neither header remain blocked.
+  const referer = request.headers.get("Referer");
+  if (!referer) return false;
+  try {
+    return new URL(referer).origin === expectedOrigin;
+  } catch {
+    return false;
+  }
+}
+
 function parseMcp(raw) {
   const trimmed = raw.trim();
   if (!trimmed) throw new Error("Empty registry response.");
@@ -255,17 +271,8 @@ function accessMessage(context) {
 }
 
 async function issueChallenge(request, env, origin) {
-  if (origin !== env.PACT_ORIGIN)
-    return json({
-      code: "ORIGIN_REJECTED",
-      message: `Request origin is not allowed. [origin=${origin || "(missing)"}; referer=${request.headers.get("referer") || "(missing)"}; host=${new URL(request.url).host}; expected=${env.PACT_ORIGIN}]`,
-      diagnostic: {
-        receivedOrigin: origin || null,
-        receivedReferer: request.headers.get("referer"),
-        receivedHost: new URL(request.url).host,
-        expectedOrigin: env.PACT_ORIGIN,
-      },
-    }, 403, origin);
+  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
+    return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
 
   if (!env.DB || !env.PACT_ACCESS_SELLER_ID || !env.PACT_ACCESS_RESOURCE_URL)
     return json({ code: "BACKEND_NOT_CONFIGURED", message: "Pact Access configuration is incomplete." }, 503, origin);
