@@ -107,10 +107,11 @@ function isAllowedAdmin(request: Request, env: Env): boolean {
   return !!expected && authorization === "Bearer " + expected;
 }
 
-function createSettlementRuntime(env: Env, requestId: string) {
-  const registryBeforePayment = await ensureCurrentRegistryBinding(env, record);
-  if (registryBeforePayment) return registryBeforePayment;
-
+function createSettlementRuntime(env: Env, requestId: string): {
+  scheme: ExactConcordiumScheme;
+  signer: SettlementSigner;
+  config: PaymentConfig;
+} {
   const config = getPaymentConfig(env);
   if (!config.enabled) {
     throw new Error("Concordium x402 facilitator is not configured.");
@@ -725,6 +726,9 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
       message: "The owner proof has not been verified for this request.",
     }, 403);
   }
+
+  const registryBeforePayment = await ensureCurrentRegistryBinding(env, record);
+  if (registryBeforePayment) return registryBeforePayment;
 
   const config = getPaymentConfig(env);
   if (!config.enabled) {
