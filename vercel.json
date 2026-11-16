@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/api/access/resource",
+      "destination": "https://pact-access-facilitator.tajudeenisah02.workers.dev/api/access/resource"
+    },
+    {
+      "source": "/api/access/resources",
+      "destination": "https://pact-access-facilitator.tajudeenisah02.workers.dev/api/access/resources"
+    },
+    {
+      "source": "/api/access/payment-health",
+      "destination": "https://pact-access-facilitator.tajudeenisah02.workers.dev/api/access/payment-health"
+    },
+    {
       "source": "/api/health",
       "destination": "https://pact-access-api.tajudeenisah02.workers.dev/api/health"
     },
