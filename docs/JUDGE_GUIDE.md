@@ -46,7 +46,7 @@ the first release proves control of the Concordium account that owns an active C
 - the main access Worker and D1 are deployed on Cloudflare Workers Free. its read-only registry endpoint re-checks the current active owner and `agentWallet`.
 - testnet account-info retrieval over gRPC-Web and Worker Ed25519 verification have been exercised.
 - a production invalid-signature test returned HTTP 401 and was recorded as `blocked / invalid_signature`.
-- the full x402 facilitator, registry re-checks, and buyer-agent CLI pass TypeScript and Wrangler bundling. the GitHub workflow skips deployment because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not yet configured as Actions secrets.
+- the full x402 facilitator, registry re-checks, and buyer-agent CLI pass TypeScript and Wrangler bundling. the GitHub workflow skips deployment because the `CLOUDFLARE_API_TOKEN` Actions secret is not configured. the account ID is already embedded as a non-secret workflow value.
 - a fail-closed facilitator placeholder is deployed. it reports payments disabled and returns HTTP 503 for the protected resource.
 - a valid public testnet badge, genuine owner proof, finalized CCD payment, resource delivery, and CCDScan link remain pending.
 
