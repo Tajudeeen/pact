@@ -13,7 +13,6 @@ interface AccessChallenge {
 
 interface SignedProof {
   account: string;
-  headerValue: string;
   verifiedAt: string;
 }
 
@@ -91,7 +90,6 @@ export function OwnerProofConsole() {
       }
       setProof({
         account: walletProof.account,
-        headerValue: walletProof.headerValue,
         verifiedAt: verification.verifiedAt,
       });
     } catch (cause) {
@@ -108,10 +106,10 @@ export function OwnerProofConsole() {
   const copyHandoff = async () => {
     if (!challenge || !proof || expired) return;
     const handoff = JSON.stringify({
-      requestId: challenge.requestId,
+      method: "GET",
+      url: "/api/access/resource",
       headers: {
         "x-pact-access-request": challenge.requestId,
-        "x-pact-owner-proof": proof.headerValue,
       },
     }, null, 2);
     try {
@@ -189,7 +187,7 @@ export function OwnerProofConsole() {
                     {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
                   </button>
                 )}
-                <p className="access-console-help">Pact verified this signature against the owner's latest Concordium account credentials. Payment still has to settle through x402 before any resource can be released.</p>
+                <p className="access-console-help">Pact verified the signature against the owner's latest Concordium account credentials. The copied handoff contains only the verified request id. Your buyer agent still needs to complete x402 payment before Pact releases any resource.</p>
               </div>
             )}
             {error && <p className="access-console-error" role="alert">{error}</p>}
