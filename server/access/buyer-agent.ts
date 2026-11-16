@@ -82,14 +82,10 @@ export async function createPactBuyerFetch(
 
 export function pactBuyerHeaders(input: {
   requestId: string;
-  ownerProofHeader: string;
 }): HeadersInit {
   if (!/^[A-Za-z0-9._:-]{1,150}$/.test(input.requestId))
     throw new Error("Invalid Pact access request id.");
-  if (!input.ownerProofHeader || input.ownerProofHeader.length > 16_384)
-    throw new Error("Invalid Pact owner proof header.");
   return {
     "x-pact-access-request": input.requestId,
-    "x-pact-owner-proof": input.ownerProofHeader,
   };
 }
