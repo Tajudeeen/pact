@@ -95,12 +95,14 @@ See [integration decisions](INTEGRATION_DECISIONS.md) for official references an
 
 ## HTTP contract
 
-The first seller deployment exposes one challenge route and one configured protected-resource route.
+The current production flow separates the owner proof from the buyer payment handoff.
 
-- `POST /api/access/challenges` accepts only `{ "buyerAgentId": "<CIS-8004 token address>" }`. Seller, resource, owner, and payer values are server configuration or live registry data, never request-body authority.
-- The response contains the server-generated `requestId`, one-time challenge, expiry, policy identifier, and exact message to sign.
-- The owner signs that exact message with Concordium Browser Wallet. The browser helper returns a base64url JSON header value containing only the account address and signature.
-- The buyer agent sends `x-pact-access-request` and `x-pact-owner-proof` to the protected resource route. Its server-side x402 fetch wrapper handles the payment-required response and retry.
-- The protected route releases the configured file only after x402 finalization is confirmed and Pact has persisted the request as paid.
+- `POST /api/access/challenges` accepts only `{ "buyerAgentId": "<CIS-8004 token address>" }`. Seller, resource, owner, and payer values come from server configuration and live registry data, never request-body authority.
+- The response contains a server-generated `requestId`, one-time challenge, 90-second challenge expiry, policy identifier, and exact message to sign.
+- The owner signs that exact message with Concordium Browser Wallet. The browser sends the base64url proof presentation to `POST /api/access/proofs` with the `requestId`.
+- The main Worker fetches fresh finalized Concordium testnet account credentials, checks the account and credential key thresholds, and verifies the signature. Only then does it mark the D1 request `proof_verified` and extend the access window to 12 minutes for x402 negotiation and finality retries.
+- The buyer-facing handoff contains only the verified request id and `GET /api/access/resource`. It never copies or exports the owner's raw signature.
+- The buyer agent sends `x-pact-access-request` to `GET /api/access/resource`. The facilitator returns x402 v2 CCD payment requirements and accepts payment only from the current on-chain CIS-8004 `agentWallet`.
+- The resource is delivered only after the official Concordium x402 scheme confirms finality and Pact verifies payer, seller payout address, amount, and CCD asset.
 
-The challenge endpoint is covered by the existing same-origin and rate-limit middleware. The protected route is also rate-limited and remains fail-closed on missing proof, mismatched payer, or ambiguous settlement.
+The challenge and proof endpoints are same-origin protected. The facilitator is a separate Worker. It remains fail-closed until the full x402 bundle is deployed and testnet configuration is supplied.
