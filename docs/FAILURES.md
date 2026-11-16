@@ -1,3 +1,5 @@
+> archived: this document describes the previous Somnia/dreamDEX perpetual-trading product. it is preserved as historical project context only and must not be used to operate Pact Access. the current product is the Concordium proof-gated access gateway. start with docs/PACT_ACCESS_SPEC.md, docs/INTEGRATION_DECISIONS.md, and docs/CLOUDFLARE_FREE_BACKEND.md.
+
 # Failure behavior and proof
 
 | Failure                                            | Correct response                                                       | Existing check                                                                         |
