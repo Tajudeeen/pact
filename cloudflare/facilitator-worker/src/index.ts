@@ -11,7 +11,7 @@ import { ExactConcordiumScheme } from "@x402/concordium/exact/facilitator";
 const NETWORK = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
 const MAX_RESOURCE_BYTES = 256 * 1024;
 const FINALITY_TIMEOUT_MS = 60_000;
-const POLL_INTERVAL_MS = 1_000;
+const POLL_INTERVAL_MS = 2_000;
 
 interface Env {
   DB: D1Database;
@@ -169,13 +169,11 @@ function createSettlementRuntime(env: Env, requestId: string) {
           if (!summary) {
             throw new Error("Finalized Concordium transaction has no outcome summary.");
           }
-          if (summary.transactionType === "failed") {
-            throw new Error("Concordium transaction failed on-chain.");
-          }
+          const failed = summary.transactionType === "failed";
           const transfer = summary.transfer || {};
           return {
             txHash,
-            status: "finalized",
+            status: failed ? "failed" : "finalized",
             sender: summary.sender?.address || "",
             recipient: transfer.to?.address,
             amount: transfer.amount
@@ -390,6 +388,33 @@ async function markPaid(
   return results[0]?.meta?.changes === 1;
 }
 
+async function markBlocked(
+  env: Env,
+  requestId: string,
+  txHash: string,
+  reason: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE pact_access_requests SET state = 'blocked' " +
+      "WHERE request_id = ? AND state = 'payment_pending' " +
+      "AND payment_reference = ?",
+    ).bind(requestId, txHash),
+    env.DB.prepare(
+      "INSERT INTO pact_access_audit " +
+      "(request_id, state, at, reason_code, payment_reference) " +
+      "SELECT ?, 'blocked', ?, ?, ? WHERE changes() = 1",
+    ).bind(requestId, now, reason, txHash),
+  ]);
+  if (results[0]?.meta?.changes !== 1) {
+    const latest = await findRequest(env, requestId);
+    if (latest?.state !== "blocked") {
+      throw new Error("Pact could not lock an invalid finalized payment.");
+    }
+  }
+}
+
 async function claimDelivery(
   env: Env,
   requestId: string,
@@ -495,9 +520,17 @@ async function reconcilePending(
     );
 
     if (!await verifyPaymentMatchesRequest(info, record, runtime.config)) {
+      await markBlocked(
+        env,
+        record.request_id,
+        record.payment_reference,
+        info.status === "failed"
+          ? "concordium_transaction_failed"
+          : "concordium_finality_mismatch",
+      );
       return json({
         code: "PAYMENT_FINALITY_MISMATCH",
-        message: "The finalized transaction does not match the registered agent wallet and Pact's price.",
+        message: "The finalized transaction failed or did not match the registered agent wallet and Pact's price. This request is blocked.",
       }, 403);
     }
 
@@ -637,6 +670,16 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
     }, 402);
   }
 
+  let runtime;
+  try {
+    runtime = createSettlementRuntime(env, requestId);
+  } catch {
+    return json({
+      code: "FACILITATOR_NOT_READY",
+      message: "The Concordium sponsor account or signing key is invalid or unavailable.",
+    }, 503);
+  }
+
   const reserved = await env.DB.prepare(
     "UPDATE pact_access_requests SET state = 'payment_pending' " +
     "WHERE request_id = ? AND state = 'proof_verified' " +
@@ -667,15 +710,19 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-    const runtime = createSettlementRuntime(env, requestId);
     const settled: any = await runtime.scheme.settle(payload, requirements as any);
 
     if (!settled.success) {
-      if (settled.transaction) {
+      if (
+        settled.transaction ||
+        String(settled.errorReason || "").startsWith("submission_failed")
+      ) {
         return json({
           code: "PAYMENT_PENDING",
-          message: "The transaction was submitted. Pact is waiting for finalization. Retry the same request id and do not submit a second payment.",
-          transaction: settled.transaction,
+          message: settled.transaction
+            ? "The transaction was submitted. Pact is waiting for finalization. Retry the same request id and do not submit a second payment."
+            : "The submission result is uncertain. Pact has locked this request to prevent a duplicate payment. Do not submit another payment. Manual transaction reconciliation is required.",
+          ...(settled.transaction ? { transaction: settled.transaction } : {}),
         }, 202, {
           "PAYMENT-RESPONSE": base64EncodeUtf8(JSON.stringify(settled)),
         });
@@ -720,21 +767,15 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
       settled.transaction,
       settled.payer,
     );
-  } catch (error) {
+  } catch {
     const latest = await findRequest(env, requestId);
-    if (latest?.payment_reference) {
-      return json({
-        code: "PAYMENT_PENDING",
-        message: "Pact has a transaction reference and is reconciling finality. Retry this same request id. Do not submit a second payment.",
-        transaction: latest.payment_reference,
-      }, 202);
-    }
-
-    await resetUnbroadcastPayment(env, requestId, "x402_settlement_unconfirmed");
     return json({
-      code: "PAYMENT_REJECTED",
-      message: error instanceof Error ? error.message : "Concordium x402 settlement failed.",
-    }, 402);
+      code: "PAYMENT_OUTCOME_UNKNOWN",
+      message: latest?.payment_reference
+        ? "Pact has a transaction reference and is reconciling finality. Retry this same request id. Do not submit a second payment."
+        : "Pact could not prove that the transaction was not broadcast. This request remains locked to prevent a duplicate payment. Manual reconciliation is required.",
+      ...(latest?.payment_reference ? { transaction: latest.payment_reference } : {}),
+    }, 202);
   }
 }
 
