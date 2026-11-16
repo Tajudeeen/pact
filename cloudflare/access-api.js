@@ -188,15 +188,29 @@ async function verifyBadge(tokenAddress, env) {
     badgeResponse.json(),
     cardResponse.json(),
   ]);
+  const checks = badgeCheck.checks || {};
+  const hardErrors = Array.isArray(badgeCheck.issues)
+    ? badgeCheck.issues.filter((issue) => issue?.severity === "error")
+    : [];
   if (
     badgeCheck.badge_valid !== true ||
-    badgeCheck.extension_conformant !== true ||
-    badgeCheck.verification_present !== true ||
-    !Array.isArray(badgeCheck.issues) ||
-    badgeCheck.issues.length !== 0 ||
-    cardCheck.match !== true
+    badgeCheck.network !== "testnet" ||
+    checks.on_chain_agent_found !== true ||
+    checks.status_active !== true ||
+    checks.has_agent_uri !== true ||
+    checks.card_fetched !== true ||
+    checks.hash_matches_on_chain !== true ||
+    checks.badge_present !== true ||
+    checks.badge_well_formed !== true ||
+    checks.token_address_matches !== true ||
+    checks.owner_matches !== true ||
+    checks.chain_matches !== true ||
+    checks.contracts_match !== true ||
+    hardErrors.length !== 0 ||
+    cardCheck.match !== true ||
+    cardCheck.network !== "testnet"
   )
-    throw new Error("The Concordium badge or Agent Card did not pass verification.");
+    throw new Error("The Concordium badge, active registry record, or Agent Card hash did not pass verification.");
 
   const owner =
     typeof agent.owner_account === "string"
@@ -214,6 +228,7 @@ async function verifyBadge(tokenAddress, env) {
     agent.token_address !== tokenAddress ||
     agent.network !== "testnet" ||
     agent.status !== "Active" ||
+    owner !== badgeCheck.on_chain?.owner_account ||
     !/^[1-9A-HJ-NP-Za-km-z]{45,55}$/.test(owner) ||
     !/^[1-9A-HJ-NP-Za-km-z]{45,55}$/.test(wallet)
   )
