@@ -32,7 +32,8 @@ export function OwnerProofConsole() {
     return () => window.clearInterval(timer);
   }, []);
   const validAgent = useMemo(() => agentIdPattern.test(agentId.trim()), [agentId]);
-  const remainingMs = challenge ? Math.max(0, Date.parse(challenge.expiresAt) - clock) : 0;\n  const expired = Boolean(challenge && remainingMs === 0);\n  const remainingLabel = `${Math.floor(remainingMs / 60_000)}:${String(Math.floor((remainingMs % 60_000) / 1000)).padStart(2, "0")}`;
+  const remainingMs = challenge ? Math.max(0, Date.parse(challenge.expiresAt) - clock) : 0;
+  const expired = Boolean(challenge && remainingMs === 0);\n  const remainingLabel = `${Math.floor(remainingMs / 60_000)}:${String(Math.floor((remainingMs % 60_000) / 1000)).padStart(2, "0")}`;
 
   const issueChallenge = async () => {
     setBusy("challenge");
