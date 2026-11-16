@@ -561,7 +561,7 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") {
     return json({
       code: "METHOD_NOT_ALLOWED",
-      message: "Use GET or HEAD to request this resource.",
+      message: "Use GET to request this resource.",
     }, 405);
   }
 
