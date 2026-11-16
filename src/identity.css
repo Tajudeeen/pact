@@ -40,7 +40,7 @@
   right: -22%;
   top: 11vh;
   background: rgb(222 206 184 / 5%);
-  mask: url("../brand/dreamdex-mark.svg") center / contain no-repeat;
+  mask: url("/pact-mark.svg") center / contain no-repeat;
 }
 .ambient-sweep {
   position: absolute;
