@@ -16,7 +16,7 @@ describe("Pact Access public routes", () => {
         </MemoryRouter>,
       );
       expect(
-        await screen.findByRole("heading", { name: /agents can pay/i }),
+        await screen.findByRole("heading", { name: /access for agents/i }),
       ).toBeDefined();
     },
   );
