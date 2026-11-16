@@ -270,6 +270,409 @@ function accessMessage(context) {
   });
 }
 
+
+function concatBytes(...parts) {
+  const length = parts.reduce((total, part) => total + part.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+function decodeAccountAddress(value) {
+  const bytes = base58Bytes(value);
+  if (bytes.length !== 37 || bytes[0] !== 1)
+    throw new Error("Invalid Concordium account address.");
+  const payload = bytes.slice(0, 33);
+  const checksum = bytes.slice(33);
+  return sha256(payload).then(sha256).then((digest) => {
+    if (checksum.some((byte, index) => byte !== digest[index]))
+      throw new Error("Invalid Concordium account checksum.");
+    return payload.slice(1);
+  });
+}
+
+function readVarint(bytes, cursor) {
+  let value = 0n;
+  let shift = 0n;
+  while (cursor.offset < bytes.length && shift <= 63n) {
+    const byte = bytes[cursor.offset++];
+    value |= BigInt(byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) return value;
+    shift += 7n;
+  }
+  throw new Error("Malformed Concordium protobuf varint.");
+}
+
+function readProtoFields(bytes) {
+  const fields = new Map();
+  const cursor = { offset: 0 };
+  while (cursor.offset < bytes.length) {
+    const tag = Number(readVarint(bytes, cursor));
+    const fieldNumber = tag >>> 3;
+    const wireType = tag & 7;
+    if (!fieldNumber) throw new Error("Malformed Concordium protobuf tag.");
+    let value;
+    if (wireType === 0) {
+      value = readVarint(bytes, cursor);
+    } else if (wireType === 1) {
+      if (cursor.offset + 8 > bytes.length) throw new Error("Truncated protobuf fixed64.");
+      value = bytes.slice(cursor.offset, cursor.offset + 8);
+      cursor.offset += 8;
+    } else if (wireType === 2) {
+      const length = Number(readVarint(bytes, cursor));
+      if (!Number.isSafeInteger(length) || length < 0 || cursor.offset + length > bytes.length)
+        throw new Error("Invalid Concordium protobuf field length.");
+      value = bytes.slice(cursor.offset, cursor.offset + length);
+      cursor.offset += length;
+    } else if (wireType === 5) {
+      if (cursor.offset + 4 > bytes.length) throw new Error("Truncated protobuf fixed32.");
+      value = bytes.slice(cursor.offset, cursor.offset + 4);
+      cursor.offset += 4;
+    } else {
+      throw new Error("Unsupported Concordium protobuf wire type.");
+    }
+    const entries = fields.get(fieldNumber) || [];
+    entries.push({ wireType, value });
+    fields.set(fieldNumber, entries);
+  }
+  return fields;
+}
+
+function firstProtoField(fields, fieldNumber, wireType) {
+  return (fields.get(fieldNumber) || []).find((entry) => entry.wireType === wireType)?.value;
+}
+
+function allProtoFields(fields, fieldNumber, wireType) {
+  return (fields.get(fieldNumber) || [])
+    .filter((entry) => entry.wireType === wireType)
+    .map((entry) => entry.value);
+}
+
+function parsePositiveProtoInteger(message, fieldNumber, label) {
+  const field = firstProtoField(readProtoFields(message), fieldNumber, 0);
+  if (typeof field !== "bigint" || field < 1n || field > 0xffffffffn)
+    throw new Error("Concordium account response is missing " + label + ".");
+  return Number(field);
+}
+
+function parseAccountInfoForProof(message, expectedAddressBytes) {
+  const account = readProtoFields(message);
+  const addressMessage = firstProtoField(account, 10, 2);
+  if (!addressMessage) throw new Error("Concordium account response has no address.");
+  const addressBytes = firstProtoField(readProtoFields(addressMessage), 1, 2);
+  if (!addressBytes || addressBytes.length !== 32 ||
+      addressBytes.some((byte, index) => byte !== expectedAddressBytes[index]))
+    throw new Error("Concordium returned a different account address.");
+
+  const accountThresholdMessage = firstProtoField(account, 5, 2);
+  if (!accountThresholdMessage)
+    throw new Error("Concordium account response has no account signature threshold.");
+  const accountThreshold = parsePositiveProtoInteger(
+    accountThresholdMessage,
+    1,
+    "account threshold",
+  );
+
+  const credentials = new Map();
+  for (const entryBytes of allProtoFields(account, 4, 2)) {
+    const entry = readProtoFields(entryBytes);
+    const credentialIndexValue = firstProtoField(entry, 1, 0) ?? 0n;
+    if (credentialIndexValue < 0n || credentialIndexValue > 0xffffffffn)
+      throw new Error("Invalid Concordium credential index.");
+    const credentialIndex = Number(credentialIndexValue);
+    const credentialBytes = firstProtoField(entry, 2, 2);
+    if (!credentialBytes) throw new Error("Concordium account credential is missing.");
+    const credential = readProtoFields(credentialBytes);
+    const credentialVariant = (credential.get(1) || []).concat(credential.get(2) || [])
+      .find((field) => field.wireType === 2);
+    if (!credentialVariant) throw new Error("Unsupported Concordium account credential.");
+    const credentialValues = readProtoFields(credentialVariant.value);
+    const publicKeysBytes = firstProtoField(credentialValues, 1, 2);
+    if (!publicKeysBytes) throw new Error("Credential has no public signing keys.");
+    const publicKeys = readProtoFields(publicKeysBytes);
+    const keyThresholdMessage = firstProtoField(publicKeys, 2, 2);
+    if (!keyThresholdMessage)
+      throw new Error("Credential has no key signature threshold.");
+    const keyThreshold = parsePositiveProtoInteger(
+      keyThresholdMessage,
+      1,
+      "credential key threshold",
+    );
+    const keys = new Map();
+    for (const keyEntryBytes of allProtoFields(publicKeys, 1, 2)) {
+      const keyEntry = readProtoFields(keyEntryBytes);
+      const keyIndexValue = firstProtoField(keyEntry, 1, 0) ?? 0n;
+      if (keyIndexValue < 0n || keyIndexValue > 0xffffffffn)
+        throw new Error("Invalid Concordium credential key index.");
+      const keyValueBytes = firstProtoField(keyEntry, 2, 2);
+      if (!keyValueBytes) throw new Error("Credential signing key is missing.");
+      const keyValue = readProtoFields(keyValueBytes);
+      const ed25519Key = firstProtoField(keyValue, 1, 2);
+      if (!ed25519Key || ed25519Key.length !== 32)
+        throw new Error("Unsupported Concordium credential key type.");
+      keys.set(Number(keyIndexValue), ed25519Key);
+    }
+    if (!keys.size || keyThreshold > keys.size)
+      throw new Error("Concordium credential key threshold is inconsistent.");
+    credentials.set(credentialIndex, { threshold: keyThreshold, keys });
+  }
+  if (!credentials.size || accountThreshold > credentials.size)
+    throw new Error("Concordium account credential threshold is inconsistent.");
+  return { accountAddress: addressBytes, accountThreshold, credentials };
+}
+
+function encodeLengthDelimitedField(fieldNumber, value) {
+  const prefix = [];
+  let length = BigInt(value.length);
+  while (length > 127n) {
+    prefix.push(Number(length & 0x7fn) | 0x80);
+    length >>= 7n;
+  }
+  prefix.push(Number(length));
+  return concatBytes(new Uint8Array([(fieldNumber << 3) | 2]), new Uint8Array(prefix), value);
+}
+
+async function fetchConcordiumAccountInfo(account) {
+  const addressBytes = await decodeAccountAddress(account);
+  // AccountInfoRequest { block_hash: { last_final: {} }, account_identifier: { address: { value: addressBytes } } }
+  const lastFinalBlock = new Uint8Array([18, 0]);
+  const accountAddressMessage = encodeLengthDelimitedField(1, addressBytes);
+  const accountIdentifier = encodeLengthDelimitedField(1, accountAddressMessage);
+  const requestMessage = concatBytes(
+    encodeLengthDelimitedField(1, lastFinalBlock),
+    encodeLengthDelimitedField(2, accountIdentifier),
+  );
+  const frame = new Uint8Array(5 + requestMessage.length);
+  frame[0] = 0;
+  new DataView(frame.buffer).setUint32(1, requestMessage.length, false);
+  frame.set(requestMessage, 5);
+
+  const response = await fetch(
+    "https://grpc.testnet.concordium.com:20000/concordium.v2.Queries/GetAccountInfo",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/grpc-web+proto",
+        Accept: "application/grpc-web+proto",
+        "X-Grpc-Web": "1",
+        "X-User-Agent": "grpc-web-javascript/0.1",
+      },
+      body: frame,
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  if (!response.ok) throw new Error("Concordium account service is unavailable.");
+  const raw = new Uint8Array(await response.arrayBuffer());
+  const messages = [];
+  let trailerStatus = null;
+  let offset = 0;
+  while (offset + 5 <= raw.length) {
+    const flag = raw[offset];
+    const length = new DataView(raw.buffer, raw.byteOffset + offset + 1, 4)
+      .getUint32(0, false);
+    if (offset + 5 + length > raw.length)
+      throw new Error("Concordium returned a truncated account response.");
+    const payload = raw.slice(offset + 5, offset + 5 + length);
+    if (flag === 0) messages.push(payload);
+    else if ((flag & 0x80) === 0x80) {
+      const trailers = new TextDecoder().decode(payload);
+      const match = trailers.match(/(?:^|\r?\n)grpc-status:\s*(\d+)/i);
+      if (match) trailerStatus = match[1];
+    } else {
+      throw new Error("Concordium returned an unsupported gRPC-Web frame.");
+    }
+    offset += 5 + length;
+  }
+  const grpcStatus = response.headers.get("grpc-status") || trailerStatus;
+  if (grpcStatus !== "0" || messages.length !== 1)
+    throw new Error("Concordium account lookup failed with gRPC status " + (grpcStatus || "missing") + ".");
+  return parseAccountInfoForProof(messages[0], addressBytes);
+}
+
+function decodeOwnerProof(value) {
+  if (typeof value !== "string" || !value || value.length > 16_384 ||
+      !/^[A-Za-z0-9_-]+$/.test(value))
+    throw new Error("A valid owner proof is required.");
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const parsed = JSON.parse(new TextDecoder().decode(bytes));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+      typeof parsed.account !== "string" || !parsed.signature ||
+      typeof parsed.signature !== "object" || Array.isArray(parsed.signature))
+    throw new Error("The owner proof format is invalid.");
+  return { account: parsed.account, signature: parsed.signature };
+}
+
+function hexBytes(value, expectedLength) {
+  if (typeof value !== "string" || value.length !== expectedLength * 2 ||
+      !/^[0-9a-f]+$/i.test(value))
+    throw new Error("Concordium signature encoding is invalid.");
+  const bytes = new Uint8Array(expectedLength);
+  for (let index = 0; index < expectedLength; index++)
+    bytes[index] = parseInt(value.slice(index * 2, index * 2 + 2), 16);
+  return bytes;
+}
+
+async function verifyConcordiumMessageSignature(message, account, signature, accountInfo) {
+  const credentialSignatures = Object.entries(signature);
+  if (credentialSignatures.length < accountInfo.accountThreshold)
+    return false;
+
+  const addressBytes = await decodeAccountAddress(account);
+  const messageDigest = await sha256(concatBytes(
+    addressBytes,
+    new Uint8Array(8),
+    new TextEncoder().encode(message),
+  ));
+
+  for (const [credentialIndexText, keySignatures] of credentialSignatures) {
+    if (!/^(0|[1-9]\d*)$/.test(credentialIndexText) ||
+        !keySignatures || typeof keySignatures !== "object" || Array.isArray(keySignatures))
+      return false;
+    const credentialIndex = Number(credentialIndexText);
+    const credential = accountInfo.credentials.get(credentialIndex);
+    if (!credential) return false;
+    const signedKeys = Object.entries(keySignatures);
+    if (signedKeys.length < credential.threshold) return false;
+
+    for (const [keyIndexText, signatureHex] of signedKeys) {
+      if (!/^(0|[1-9]\d*)$/.test(keyIndexText)) return false;
+      const publicKeyBytes = credential.keys.get(Number(keyIndexText));
+      if (!publicKeyBytes) return false;
+      const signatureBytes = hexBytes(signatureHex, 64);
+      const publicKey = await crypto.subtle.importKey(
+        "raw",
+        publicKeyBytes,
+        { name: "Ed25519" },
+        false,
+        ["verify"],
+      );
+      if (!await crypto.subtle.verify(
+        { name: "Ed25519" },
+        publicKey,
+        signatureBytes,
+        messageDigest,
+      )) return false;
+    }
+  }
+  return true;
+}
+
+async function rejectOwnerProof(env, requestId, reason, origin, status = 401) {
+  const at = new Date().toISOString();
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `UPDATE pact_access_requests
+         SET state = 'blocked', challenge_consumed_at = ?
+         WHERE request_id = ? AND state = 'proof_required'
+           AND challenge_consumed_at IS NULL`,
+      ).bind(at, requestId),
+      env.DB.prepare(
+        `INSERT INTO pact_access_audit (request_id, state, at, reason_code)
+         SELECT ?, 'blocked', ?, ? WHERE changes() = 1`,
+      ).bind(requestId, at, reason),
+    ]);
+  } catch {
+    return json({ code: "PROOF_STATE_UPDATE_FAILED", message: "Pact could not record the denied proof." }, 503, origin);
+  }
+  return json({ code: "OWNER_PROOF_REJECTED", message: "The Concordium owner signature was rejected. Request a fresh challenge." }, status, origin);
+}
+
+async function verifyOwnerProof(request, env, origin) {
+  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
+    return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
+  let body;
+  try {
+    const raw = await request.text();
+    if (raw.length > 20_000) throw new Error("Request too large.");
+    body = JSON.parse(raw);
+  } catch {
+    return json({ code: "INVALID_INPUT", message: "A valid owner proof request is required." }, 400, origin);
+  }
+  if (typeof body?.requestId !== "string" ||
+      !/^[0-9a-f-]{36}$/i.test(body.requestId) ||
+      typeof body?.proof !== "string")
+    return json({ code: "INVALID_INPUT", message: "A request ID and owner proof are required." }, 400, origin);
+
+  const row = await env.DB.prepare(
+    "SELECT request_id, owner_account, message, expires_at, state, challenge_consumed_at FROM pact_access_requests WHERE request_id = ? LIMIT 1",
+  ).bind(body.requestId).first();
+  if (!row)
+    return json({ code: "ACCESS_REQUEST_NOT_FOUND", message: "Pact access request was not found." }, 404, origin);
+  if (row.state !== "proof_required" || row.challenge_consumed_at)
+    return json({ code: "CHALLENGE_ALREADY_USED", message: "This challenge is no longer available. Request a fresh challenge." }, 409, origin);
+  const expiresAt = Date.parse(row.expires_at);
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
+    return rejectOwnerProof(env, body.requestId, "challenge_expired", origin, 410);
+
+  let presentation;
+  try {
+    presentation = decodeOwnerProof(body.proof);
+    if (presentation.account !== row.owner_account)
+      return rejectOwnerProof(env, body.requestId, "wrong_account", origin, 403);
+  } catch {
+    return rejectOwnerProof(env, body.requestId, "invalid_presentation", origin, 400);
+  }
+
+  let accountInfo;
+  try {
+    accountInfo = await fetchConcordiumAccountInfo(row.owner_account);
+  } catch {
+    return json({ code: "CONCORDIUM_UNAVAILABLE", message: "Pact could not retrieve fresh Concordium account credentials. The challenge remains available until it expires." }, 503, origin);
+  }
+
+  let valid = false;
+  try {
+    valid = await verifyConcordiumMessageSignature(
+      row.message,
+      row.owner_account,
+      presentation.signature,
+      accountInfo,
+    );
+  } catch {
+    return json({ code: "SIGNATURE_VERIFIER_UNAVAILABLE", message: "Pact could not complete Concordium signature verification." }, 503, origin);
+  }
+  if (!valid)
+    return rejectOwnerProof(env, body.requestId, "invalid_signature", origin, 401);
+
+  const verifiedAt = new Date().toISOString();
+  let results;
+  try {
+    results = await env.DB.batch([
+      env.DB.prepare(
+        `UPDATE pact_access_requests
+         SET state = 'proof_verified', challenge_consumed_at = ?
+         WHERE request_id = ? AND state = 'proof_required'
+           AND challenge_consumed_at IS NULL AND expires_at > ?`,
+      ).bind(verifiedAt, body.requestId, verifiedAt),
+      env.DB.prepare(
+        `INSERT INTO pact_access_audit (request_id, state, at, reason_code)
+         SELECT ?, 'proof_verified', ?, 'concordium_account_signature'
+         WHERE changes() = 1`,
+      ).bind(body.requestId, verifiedAt),
+    ]);
+  } catch {
+    return json({ code: "PROOF_PERSISTENCE_FAILED", message: "Pact verified the signature but could not persist the result. Resource access remains locked." }, 503, origin);
+  }
+  if (results[0]?.meta?.changes !== 1)
+    return json({ code: "CHALLENGE_ALREADY_USED", message: "This challenge was consumed by another request or expired. Request a fresh challenge." }, 409, origin);
+
+  return json({
+    requestId: body.requestId,
+    status: "verified",
+    verifiedAccount: row.owner_account,
+    verifiedAt,
+    policyId: POLICY_ID,
+  }, 200, origin);
+}
+
 async function issueChallenge(request, env, origin) {
   if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
     return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
@@ -406,7 +809,7 @@ export default {
           runtime: "cloudflare-workers-free",
           database: "d1",
           challengeIssuance: "configured",
-          ownerSignatureVerification: "not-configured",
+          ownerSignatureVerification: "configured",\n          accountInfoRpc: "concordium-testnet-grpc-web",
           payments: "disabled",
           resourceDelivery: "disabled",
         });
@@ -417,6 +820,9 @@ export default {
 
     if (url.pathname === "/api/access/challenges" && request.method === "POST")
       return issueChallenge(request, env, origin);
+
+    if (url.pathname === "/api/access/proofs" && request.method === "POST")
+      return verifyOwnerProof(request, env, origin);
 
     if (url.pathname === "/api/access/resource")
       return json({
