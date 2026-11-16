@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "https://pact-access-api.tajudeenisah02.workers.dev/api/health"
+    },
+    {
+      "source": "/api/access/:path*",
+      "destination": "https://pact-access-api.tajudeenisah02.workers.dev/api/access/:path*"
+    }
+  ]
+}
