@@ -1428,6 +1428,12 @@ body {
   font-weight: 720;
   letter-spacing: -0.075em;
 }
+.access-brand-image {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
 .access-brand-symbol {
   width: 30px;
   height: 30px;
@@ -1439,7 +1445,7 @@ body {
   font-size: 17px;
   letter-spacing: -0.08em;
 }
-.access-brand-dot { color: #4d8878; }
+.access-brand-dot { color: #8b5cf6; }
 .access-nav nav {
   display: flex;
   align-items: center;
@@ -1910,23 +1916,17 @@ body {
   animation: access-splash-arrive .55s cubic-bezier(.2,.8,.2,1) both;
 }
 .access-splash-mark {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-  background: #1e3328;
-  color: #f8faf7;
-  font-size: 23px;
-  font-weight: 650;
-  letter-spacing: -.08em;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .access-splash-word {
   font-size: 29px;
   font-weight: 650;
   letter-spacing: -.075em;
 }
-.access-splash-word span { color: #6b9b78; }
+.access-splash-word span { color: #8b5cf6; }
 .access-splash-progress {
   width: 118px;
   height: 2px;
