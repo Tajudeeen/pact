@@ -1,3 +1,5 @@
+> archived: this document describes the previous Somnia/dreamDEX perpetual-trading product. it is preserved as historical project context only and must not be used to operate Pact Access. the current product is the Concordium proof-gated access gateway. start with docs/PACT_ACCESS_SPEC.md, docs/INTEGRATION_DECISIONS.md, and docs/CLOUDFLARE_FREE_BACKEND.md.
+
 # Pact and dreamDEX branding
 
 Pact uses its own custom brace-and-P mark, with separate dreamDEX integration attribution. This does not present Pact as an official dreamDEX product or imply endorsement.
