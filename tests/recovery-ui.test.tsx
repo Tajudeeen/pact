@@ -21,7 +21,7 @@ describe("Pact Access route boundary", () => {
       </MemoryRouter>,
     );
     expect(
-      await screen.findByRole("heading", { name: /agents can pay/i }),
+      await screen.findByRole("heading", { name: /access for agents/i }),
     ).toBeDefined();
     expect(screen.queryByRole("button", { name: "Check recovery" })).toBeNull();
   });
