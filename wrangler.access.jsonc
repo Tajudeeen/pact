@@ -7,14 +7,21 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
-    "logs": { "enabled": true, "invocation_logs": true },
-    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "pact-access",
-      "database_id": "b64ef749-48cd-4638-88d5-add8e8936fe3"
+      "database_id": "b64ef749-48cd-4638-88d5-add8e8936fe3",
+      "migrations_dir": "cloudflare/migrations/access"
     }
   ],
   "vars": {
