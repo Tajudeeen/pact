@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, Copy, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
-import { api, browserPreview } from "../api";
+import { ApiError, api, browserPreview } from "../api";
 import { createConcordiumOwnerProof } from "../access/concordium-wallet";
 
 interface AccessChallenge {
@@ -95,7 +95,11 @@ export function OwnerProofConsole() {
         verifiedAt: verification.verifiedAt,
       });
     } catch (cause) {
-      setError((cause as Error).message || "The Concordium wallet could not sign this challenge.");
+      if (cause instanceof ApiError && [401, 403, 409, 410].includes(cause.status)) {
+        setChallenge(null);
+        setProof(null);
+      }
+      setError((cause as Error).message || "Pact could not verify the Concordium owner signature.");
     } finally {
       setBusy(null);
     }
