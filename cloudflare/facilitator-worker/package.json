@@ -7,16 +7,19 @@
     "dev": "wrangler dev --config wrangler.jsonc",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "wrangler deploy --dry-run --outdir .out --config wrangler.jsonc",
-    "deploy": "wrangler deploy --config wrangler.jsonc"
+    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "demo:buyer": "tsx scripts/pact-buyer-agent.ts"
   },
   "dependencies": {
     "@concordium/web-sdk": "12.0.2",
     "@x402/concordium": "2.31.0",
-    "@x402/core": "2.31.0"
+    "@x402/core": "2.31.0",
+    "@x402/fetch": "2.31.0"
   },
   "devDependencies": {
     "wrangler": "4.152.0",
     "typescript": "5.9.3",
-    "@cloudflare/workers-types": "5.20261023.1"
+    "@cloudflare/workers-types": "5.20261023.1",
+    "tsx": "4.23.15"
   }
 }
