@@ -12,45 +12,58 @@ This keeps the React frontend on Vercel and runs Pact Access API endpoints on Cl
 - Testnet CIS-8 registry: contract `12801,0`.
 - Testnet CAIP-2 network: `ccd:4221332d34e1694168c2a0c0b3fd0f27`.
 
-## Current scope
+## API scope
 
-- `GET /api/health`: checks the D1 binding and reports enabled capabilities.
-- `POST /api/access/challenges`: validates a CIS-8004 badge through Concordium's official Registry MCP service, resolves the active owner and registered `agentWallet`, and stores a 90-second owner-signature challenge and audit row in D1.
-- `GET /api/access/resource`: returns 503 and fails closed until owner signature verification and finalized x402 settlement are implemented in a Workers-compatible runtime.
+- `GET /api/health`: checks D1 and reports the Worker runtime capabilities.
+- `POST /api/access/challenges`: validates a CIS-8004 badge using the official Concordium Agent Registry service, resolves the active owner and registered `agentWallet`, and stores a 90-second owner-signature challenge in D1.
+- `POST /api/access/proofs`: reads fresh account credentials from the public Concordium testnet gRPC-Web endpoint, checks account and per-credential key thresholds, verifies the exact server-issued challenge using Ed25519, and atomically marks the challenge `proof_verified`.
+- `GET /api/access/resource`: deliberately returns 503 until finalized x402 settlement is implemented in the Worker runtime. It never releases data while payments are disabled.
 
-The Worker checks the CIS-2 token's embedded contract index and subindex against the trusted configuration. It then requires an active on-chain record, a valid badge, owner and network consistency, a fetched Agent Card whose hash matches the on-chain metadata hash, and a registered `agentWallet`. Warning-only legacy notices do not cause rejection, but actual badge errors do.
+## Concordium badge verification
 
-## Production verification completed on November 16, 2026
+The Worker checks the CIS-2 token's embedded contract index and subindex against the trusted testnet registry configuration. It then requires an active on-chain record, a valid badge, owner and network consistency, a fetched Agent Card whose hash matches the on-chain metadata hash, and a registered `agentWallet`. Warning-only legacy notices do not cause rejection, but actual badge errors do.
 
-- Worker health and Vercel-proxied health both return `status: ok` and `storage: ready`.
-- The production challenge form passes the Vercel rewrite and origin guard.
-- Vercel's proxy strips the `Origin` header but preserves the `Referer`. The Worker accepts an exact configured Origin, or, only when Origin is absent, an exact Referer origin matching `PACT_ORIGIN`. Missing or mismatched site headers are rejected.
-- An active testnet agent with token `JyP9U7XyDbBWoxPrUP8vq` was rejected by the official registry verifier because its legacy card is missing the required token address and CIS-8004 contract reference. The user-facing result is `The Concordium badge, active registry record, or Agent Card hash did not pass verification.`
-- 17 of the 20 active records returned by the public testnet indexer were checked. None passed the full badge checks. Failures included unavailable card URLs, missing badge token fields, incorrect contract references, and stale/missing metadata hashes. Do not weaken the gate to make these old examples pass.
-- D1 still contains zero access requests and zero audit rows after the invalid-badge smoke test.
-- The protected-resource route continues to return 503. No wallet signatures, payments, transactions, or protected bytes have been processed.
+The testnet CIS-8004 registry is contract `12802,0`, and CIS-8 is `12801,0`. These values were read from the official registry's `contract_info` tool rather than copied from mainnet.
 
-A valid owner-signed challenge has not yet been produced because the public testnet badges inspected so far are invalid. Use a badge whose A2A extension includes the correct token address and contract references, and whose served Agent Card bytes match the on-chain SHA-256 metadata hash.
+## Owner signature verification
 
-## Required deployment settings
+The owner signs the exact JSON message returned by Pact. The Worker reloads the account's current credentials from the latest finalized testnet state for each verification attempt. It validates the returned account address, the account credential threshold, each credential's key threshold, and every supplied Ed25519 signature.
 
-The Worker is deployed with D1 binding `DB` and these variables:
+Concordium's SDK message digest is SHA-256 over the 32-byte account address, eight zero bytes, and the exact UTF-8 message bytes. Pact uses the same digest construction and Web Crypto Ed25519 verification. Credentials and keys are never cached between proof requests, because account keys can be rotated.
 
-- `PACT_ORIGIN`: `https://pact-access.vercel.app`
-- `PACT_ACCESS_SELLER_ID`: seller identifier
-- `PACT_ACCESS_RESOURCE_URL`: canonical HTTPS resource URL
-- `CONCORDIUM_AGENT_REGISTRY_INDEX`: `12802`
-- `CONCORDIUM_AGENT_REGISTRY_SUBINDEX`: `0`
+The raw wallet signature is transient request data. Pact does not store it or log it. D1 stores only the request state, challenge-consumption timestamp and a coarse audit reason code. Successful proof state is a prerequisite for the later x402 gate, but it does not itself permit resource delivery.
 
-The schema migration is stored in `cloudflare/migrations/access/0001_init.sql`. The Wrangler config points its D1 migration directory at that folder.
+A denied or expired proof blocks that challenge. The frontend clears a consumed challenge and requires a fresh one. Concordium service/network failures leave the challenge unconsumed until expiry so a temporary outage does not burn the user's proof attempt.
+
+## Production checks completed November 16, 2026
+
+- Worker health and Vercel-proxied health return `status: ok` and `storage: ready`.
+- The Vercel rewrite strips the `Origin` header but preserves `Referer`. The Worker accepts an exact configured Origin, or, only when Origin is missing, an exact Referer origin matching `PACT_ORIGIN`. Missing or mismatched site headers are rejected.
+- The public testnet account lookup returned gRPC-Web status 0. The Worker parser read one credential and its Ed25519 public key from a live account response.
+- A synthetic Ed25519 key pair passed the sign/verify round trip inside Workers. A tampered signature was rejected.
+- A production same-origin proof request with a synthetic all-zero signature returned HTTP 401 `OWNER_PROOF_REJECTED`. D1 recorded `state=blocked` and `reason_code=invalid_signature`. No signature bytes were persisted.
+- The invalid test row and temporary proof smoke page/probe workers are removed after testing.
+- The protected-resource route still returns 503. No wallet signatures from a real owner, payments, chain transactions or protected data releases have been processed.
+
+A valid real owner proof still needs to be demonstrated with an agent badge that passes the official registry checks. The public testnet badges inspected so far fail because of stale or unreachable Agent Cards, incorrect token-address fields, incorrect contract references, or mismatched metadata hashes. Do not weaken the badge checks to make these legacy records pass.
 
 ## Data safety
 
-Challenge context, expiry and one-use challenge state are stored in D1, not Worker memory. Raw wallet signatures and private keys must never be written to D1 or logs. The challenge is valid for 90 seconds. The resource route remains unavailable until owner proof and finalized payment are verified.
+The challenge is valid for 90 seconds. D1 stores request context, expiry, state and audit events, not raw wallet signatures or private keys. Resource delivery remains disabled until a finalized payment is independently verified.
 
 ## Free-plan constraints
 
-The deployment uses Workers Free and D1 only. Avoid Containers and paid Workers features. Keep the Worker within the free plan's request and CPU limits, and D1 within its free usage allowances. The next identity-verification step should use Concordium's supported testnet gRPC-Web endpoint and the SDK's `ConcordiumGRPCWebClient`, not the Node-only `@grpc/grpc-js` adapter. Concordium documents the public testnet endpoint as supporting gRPC v2 and gRPC-Web.
+This deployment uses Cloudflare Workers Free and D1 only. Avoid Containers and paid Workers features. Keep Worker CPU, request and D1 usage within the free allowances. Concordium account lookup uses the public testnet gRPC-Web endpoint through Worker `fetch`, not Node-only `@grpc/grpc-js`.
+
+## Required deployment settings
+
+- `PACT_ORIGIN`: `https://pact-access.vercel.app`
+- `PACT_ACCESS_SELLER_ID`: `pact-access-demo`
+- `PACT_ACCESS_RESOURCE_URL`: `https://pact-access.vercel.app/api/access/resource`
+- `CONCORDIUM_AGENT_REGISTRY_INDEX`: `12802`
+- `CONCORDIUM_AGENT_REGISTRY_SUBINDEX`: `0`
+
+The D1 schema migration is `cloudflare/migrations/access/0001_init.sql`, and `wrangler.access.jsonc` points to this migration directory.
 
 ## Local commands
 
@@ -60,7 +73,7 @@ pnpm access:migrate:local
 pnpm access:dev
 ```
 
-Deploy or apply the remote migration only when you intend to change the live Worker or D1 schema:
+Deploy or apply the remote migration only when intentionally changing the live Worker or D1 schema:
 
 ```powershell
 pnpm access:migrate:remote
