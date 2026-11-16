@@ -30,6 +30,8 @@ jobs:
           node-version: '24'
       - name: Install Worker dependencies
         run: npm install --no-audit --no-fund
+      - name: Type-check Worker
+        run: npm run typecheck
       - name: Bundle Worker
         run: npx wrangler deploy --dry-run --outdir .out --config wrangler.jsonc
       - name: Verify bundle output
@@ -37,6 +39,9 @@ jobs:
           test -f .out/index.js || { echo "Worker bundle not found"; exit 1; }
           echo "Worker bundle size:"
           wc -c .out/index.js
+          echo "Uncompressed bundle bytes:"
+          size=$(wc -c < .out/index.js)
+          echo "$size"
           echo "Worker bundle imports:"
           grep -nE 'node:|from "fs"|from "path"|from "crypto"' .out/index.js | head -30 || true
       - name: Upload build artifact
