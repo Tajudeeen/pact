@@ -54,6 +54,7 @@ The full x402 facilitator implementation is in `cloudflare/facilitator-worker/`.
 - The D1 `pact_access_resources` table is created.
 - The production facilitator URL currently runs a small fail-closed placeholder. `GET /api/access/payment-health` reports `x402: not-deployed`, `facilitatorConfigured: false`, `paymentsEnabled: false`, and resource delivery disabled.
 - `GET /api/access/resource` continues to return HTTP 503.
+- Before issuing x402 terms and again immediately before settlement, the full facilitator re-checks the live CIS-8004 owner and `agentWallet` through the main access Worker. A mismatch blocks the request before payment. Once a transaction is broadcast, retries reconcile that same transaction without re-opening the payment gate.
 - The final bundled x402 Worker has not yet been deployed because the GitHub repository does not have the `CLOUDFLARE_API_TOKEN` Actions secret. The account ID is embedded as a non-secret workflow value. The build workflow detects the missing token and skips deployment safely.
 - The latest main-branch quality workflow passes install, app type-check, tests and production build. The dedicated facilitator workflow passes dependency install, TypeScript check and Wrangler bundling. Deployment steps are skipped only because the Cloudflare API token is absent.
 
@@ -103,7 +104,7 @@ A request with no proof, wrong payer, invalid x402 signature, failed or mismatch
 - A synthetic Ed25519 key pair passed the Worker sign/verify round trip. A tampered signature was rejected.
 - A same-origin production proof request with a synthetic all-zero signature returned HTTP 401 `OWNER_PROOF_REJECTED`. D1 recorded `state=blocked` and `reason_code=invalid_signature`. No signature bytes were persisted.
 - The invalid smoke-test row and temporary probe Workers were removed. D1 was clean before creating the resource table.
-- The public testnet badges inspected so far fail the official verifier for stale or unreachable Agent Cards, missing token/contract fields, or metadata hash mismatches. A valid live badge and genuine owner proof are still required.
+- The live read-only registry endpoint returned HTTP 403 for the inspected invalid testnet badge, confirming that it was rejected by the official verifier. The public testnet badges inspected so far fail for stale or unreachable Agent Cards, missing token/contract fields, or metadata hash mismatches. A valid live badge and genuine owner proof are still required.
 - No real wallet proof, x402 payment, CCDExplorer transaction link, or protected resource delivery has been demonstrated.
 
 ## Free-plan constraints
