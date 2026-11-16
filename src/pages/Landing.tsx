@@ -1,4 +1,5 @@
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, LockKeyhole, ShieldCheck, Wallet, Zap, Menu, X } from "lucide-react";\nimport { useState } from "react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, LockKeyhole, ShieldCheck, Wallet, Zap, Menu, X } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { OwnerProofConsole } from "../components/OwnerProofConsole";
 import { BrandSplash } from "../components/BrandSplash";
@@ -17,7 +18,8 @@ export function Landing() {
       <BrandSplash />
       <header className="access-nav">
         <Link to="/" aria-label="Pact home" className="access-brand"><img className="access-brand-image" src="/pact-mark.svg" alt="" /><span>pact<span className="access-brand-dot">.</span></span></Link>
-        <nav className={mobileMenuOpen ? "access-nav-links is-open" : "access-nav-links"} aria-label="Main navigation"><a href="#flow" onClick={() => setMobileMenuOpen(false)}>How it works</a><a href="#security" onClick={() => setMobileMenuOpen(false)}>Security</a><a href="#scope" onClick={() => setMobileMenuOpen(false)}>Scope</a></nav>\n        <button className="access-mobile-menu" type="button" aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? <X size={18}/> : <Menu size={18}/>}</button>
+        <nav className={mobileMenuOpen ? "access-nav-links is-open" : "access-nav-links"} aria-label="Main navigation"><a href="#flow" onClick={() => setMobileMenuOpen(false)}>How it works</a><a href="#security" onClick={() => setMobileMenuOpen(false)}>Security</a><a href="#scope" onClick={() => setMobileMenuOpen(false)}>Scope</a></nav>
+        <button className="access-mobile-menu" type="button" aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? <X size={18}/> : <Menu size={18}/>}</button>
         <a className="access-nav-cta" href="#flow">Explore the flow <ArrowUpRight size={15}/></a>
       </header>
       <main>
