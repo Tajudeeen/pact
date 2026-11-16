@@ -1,0 +1,19 @@
+{
+  "name": "pact-access-facilitator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir .out --config wrangler.jsonc",
+    "dev": "wrangler dev --config wrangler.jsonc"
+  },
+  "dependencies": {
+    "@concordium/web-sdk": "12.0.2",
+    "@x402/concordium": "2.31.0",
+    "@x402/core": "2.31.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0",
+    "typescript": "5.9.3"
+  }
+}
