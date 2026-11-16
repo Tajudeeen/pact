@@ -13,6 +13,7 @@ const flow = [
 ];
 
 export function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
     <div className="access-landing" id="top">
       <BrandSplash />
@@ -54,7 +55,7 @@ export function Landing() {
       <footer className="access-footer">
         <div className="access-footer-top">
           <div className="access-footer-brand">
-            <Link to="/" aria-label="Pact home" className="access-brand"><span className="access-brand-symbol">P</span><span>PACT<span className="access-brand-dot">.</span></span></Link>
+            <Link to="/" aria-label="Pact home" className="access-brand"><img className="access-brand-image" src="/pact-mark.svg" alt="" /><span>pact<span className="access-brand-dot">.</span></span></Link>
             <p>proof-gated access for autonomous agents.</p>
           </div>
           <nav className="access-footer-nav" aria-label="Footer navigation">
