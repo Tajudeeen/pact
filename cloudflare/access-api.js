@@ -602,7 +602,7 @@ async function verifyOwnerProof(request, env, origin) {
     return json({ code: "INVALID_INPUT", message: "A request ID and owner proof are required." }, 400, origin);
 
   const row = await env.DB.prepare(
-    "SELECT request_id, owner_account, message, expires_at, state, challenge_consumed_at FROM pact_access_requests WHERE request_id = ? LIMIT 1",
+    "SELECT request_id, buyer_agent_id, owner_account, payer_account, message, expires_at, state, challenge_consumed_at FROM pact_access_requests WHERE request_id = ? LIMIT 1",
   ).bind(body.requestId).first();
   if (!row)
     return json({ code: "ACCESS_REQUEST_NOT_FOUND", message: "Pact access request was not found." }, 404, origin);
@@ -619,6 +619,25 @@ async function verifyOwnerProof(request, env, origin) {
       return rejectOwnerProof(env, body.requestId, "wrong_account", origin, 403);
   } catch {
     return rejectOwnerProof(env, body.requestId, "invalid_presentation", origin, 400);
+  }
+
+  let currentBinding;
+  try {
+    currentBinding = await verifyBadge(row.buyer_agent_id, env);
+  } catch (error) {
+    if (isRegistryServiceUnavailable(error)) {
+      return json({
+        code: "REGISTRY_UNAVAILABLE",
+        message: "Pact could not refresh the CIS-8004 owner and agentWallet binding. The challenge remains available until it expires.",
+      }, 503, origin);
+    }
+    return rejectOwnerProof(env, body.requestId, "registry_binding_invalid", origin, 403);
+  }
+  if (
+    currentBinding.owner !== row.owner_account ||
+    currentBinding.wallet !== row.payer_account
+  ) {
+    return rejectOwnerProof(env, body.requestId, "registry_binding_changed", origin, 403);
   }
 
   let accountInfo;
@@ -675,6 +694,53 @@ async function verifyOwnerProof(request, env, origin) {
   }, 200, origin);
 }
 
+function isRegistryServiceUnavailable(error) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return [
+    "not configured",
+    "service unavailable",
+    "verification is unavailable",
+    "lookup failed",
+    "empty registry response",
+    "unsupported registry response",
+    "timed out",
+    "timeout",
+    "fetch failed",
+  ].some((part) => message.includes(part));
+}
+
+async function registryBindingResponse(tokenAddress, env) {
+  if (
+    typeof tokenAddress !== "string" ||
+    !/^[1-9A-HJ-NP-Za-km-z]{20,80}$/.test(tokenAddress)
+  ) {
+    return json({ code: "INVALID_AGENT_ID", message: "A valid CIS-8004 agent token address is required." }, 400);
+  }
+
+  try {
+    const agent = await verifyBadge(tokenAddress, env);
+    return json({
+      status: "verified",
+      tokenAddress,
+      network: NETWORK,
+      ownerAccount: agent.owner,
+      payerAccount: agent.wallet,
+      registryContract: "12802,0",
+    });
+  } catch (error) {
+    const unavailable = isRegistryServiceUnavailable(error);
+    return json(
+      {
+        code: unavailable ? "REGISTRY_UNAVAILABLE" : "AGENT_NOT_VERIFIED",
+        message: unavailable
+          ? "Concordium Agent Registry is unavailable. Retry without using the previous result."
+          : "The current CIS-8004 agent binding did not pass verification.",
+      },
+      unavailable ? 503 : 403,
+    );
+  }
+}
+
 async function issueChallenge(request, env, origin) {
   if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
     return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
@@ -712,7 +778,7 @@ async function issueChallenge(request, env, origin) {
     agent = await verifyBadge(buyerAgentId, env);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Agent verification failed.";
-    const status = message.includes("not configured") ? 503 : 403;
+    const status = isRegistryServiceUnavailable(error) ? 503 : 403;
     return json(
       {
         code: status === 503 ? "REGISTRY_NOT_CONFIGURED" : "AGENT_NOT_VERIFIED",
@@ -820,6 +886,10 @@ export default {
         return json({ status: "error", storage: "unavailable" }, 503);
       }
     }
+
+    const registryRoute = url.pathname.match(/^\/api\/access\/registry\/([1-9A-HJ-NP-Za-km-z]{20,80})$/);
+    if (registryRoute && request.method === "GET")
+      return registryBindingResponse(registryRoute[1], env);
 
     if (url.pathname === "/api/access/challenges" && request.method === "POST")
       return issueChallenge(request, env, origin);
