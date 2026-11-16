@@ -14,7 +14,7 @@ export function BrandSplash() {
   return (
     <div className="access-splash" role="status" aria-label="Pact is loading">
       <div className="access-splash-lockup">
-        <span className="access-splash-mark" aria-hidden="true">P</span>
+        <img className="access-splash-mark" src="/pact-mark.svg" alt="" />
         <span className="access-splash-word">pact<span>.</span></span>
       </div>
       <div className="access-splash-progress" aria-hidden="true"><span /></div>
