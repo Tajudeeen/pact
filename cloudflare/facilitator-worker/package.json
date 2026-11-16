@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --config wrangler.jsonc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "wrangler deploy --dry-run --outdir .out --config wrangler.jsonc",
     "deploy": "wrangler deploy --config wrangler.jsonc"
   },
@@ -17,6 +17,6 @@
   "devDependencies": {
     "wrangler": "4.152.0",
     "typescript": "5.9.3",
-    "@cloudflare/workers-types": "^5.20261023.1"
+    "@cloudflare/workers-types": "5.20261023.1"
   }
 }
