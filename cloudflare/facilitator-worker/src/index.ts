@@ -133,7 +133,10 @@ function createSettlementRuntime(env: Env, requestId: string) {
     },
     async addSponsorSignature(tx: any) {
       const signable = Transaction.signableFromJSON(tx);
-      const sponsored = await Transaction.sponsor(signable, sponsorSigner);
+      const sponsored = await Transaction.sponsor(
+        signable as Parameters<typeof Transaction.sponsor>[0],
+        sponsorSigner,
+      );
       return Transaction.toJSON(sponsored);
     },
     async submitTransaction(signedTxJSON: any): Promise<string> {
