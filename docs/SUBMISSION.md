@@ -1,38 +1,55 @@
-# dreamDEX bounty checklist
+# Concordium Trusted Agents Hackathon submission checklist
 
-Source: complete bounty text supplied by the user on 24 October 2026.
+Official programme page: https://www.concordium.com/article/concordium-trusted-agents-hackathon-encode-club
 
-Deadline: **1 November 2026, 23:59 UTC**, or **2 November, 00:59 Africa/Lagos**. Results by 8 November.
+## Current project
 
-| Requirement / criterion                  | Pact evidence                                             | Status                                        |
-| ---------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| DoraHacks email whitelist                | Organizer confirmation                                    | Not verified                                  |
-| GitHub repository                        | Tajudeeen/pact                                            | Private; judge access must be arranged        |
-| README: product, users, run instructions | Root README                                               | Written                                       |
-| Real perps orders on Somnia Tokyo        | Entry/close hashes and matching fills                     | Pending                                       |
-| Demo                                     | Recorded complete testnet flow and one meaningful failure | Pending                                       |
-| Clear value and credible scope           | Personal setup preview and complete practice lifecycle    | Implemented, real-chain qualification pending |
-| Share/repeat-use loop                    | Copy setup link and account-specific preview              | Implemented, adoption not claimed             |
-| X posts section                          | 2 or 3 real links tagging @DreamDEXSomnia                 | 0 published                                   |
-| Communication accuracy                   | Distinguish simulated, testnet, native and monitored      | Required for every post                       |
-| Somnia primitives                        | Reactivity/Agents are optional                            | No extra integration claimed                  |
+Pact Access is a proof-gated gateway for paid APIs, datasets, and agent tools. The initial proof establishes control of the current Concordium account that owns an active CIS-8004 agent, then binds that owner to the agent's on-chain agentWallet. The agent pays through the official Concordium Exact x402 scheme. Pact releases the protected resource only after payment finality.
 
-## Three factual build-update topics
+The proof boundary is deliberately narrow. A Concordium account signature proves account-key control. Pact does not claim that this first release proves age, nationality, uniqueness, or another personal identity attribute. Do not call it a ZK human-identity proof.
 
-1. The problem: one shared setup can produce a different correct decision for each account or arrival time. Show the preview and refusal.
-2. The integration: after actual execution, show a transaction hash, matched fills, and the monitored protection mode.
-3. Optional final demo: run instructions, one recovery/failure case, actual proof and remaining limitations.
+## Current status on November 16, 2026
 
-Tag `@DreamDEXSomnia` in every submitted post and put the real links in README. Publishing requires the user's explicit instruction. Never claim real orders before their evidence exists.
+The main Cloudflare access Worker and D1 database are live. Testnet account-info retrieval over gRPC-Web and Ed25519 verification have been exercised. A production negative-signature smoke test returned 401 and recorded blocked / invalid_signature in D1. The current registry endpoint returns 403 for the invalid public testnet badge that was inspected.
 
-## Feedback track
+The full x402 facilitator source passes TypeScript and Wrangler bundling. The live facilitator URL is still a fail-closed placeholder because the GitHub Actions secret CLOUDFLARE_API_TOKEN has not been configured. Payment health reports x402: not-deployed, and protected-resource access returns HTTP 503. No genuine owner proof, payment, transaction hash, or resource delivery has been demonstrated.
 
-Put each non-security issue in its own `feedback/*.md` file, with severity (`critical|major|normal`), area (`API|SDK|docs|app|contracts`), reproduction steps, expected, actual, evidence, SDK version, network and test wallet address. Do not publish secrets.
+## Submission requirements
 
-$40 per accepted critical/major issue and $15 per other accepted item, until the $1,500 allocation is exhausted. Only the first valid reproducible report is paid. Known documented limitations are not automatically bugs, and a local environment failure does not establish an SDK defect.
+- A concise project description and clear problem/solution statement.
+- Public source repository: https://github.com/Tajudeeen/pact
+- Demo video no longer than three minutes.
+- A real Concordium testnet transaction link from CCDScan.
+- A short go-live plan covering seller integration, agent onboarding, payment sponsorship, secrets, monitoring, and failure handling.
 
-Security vulnerabilities go privately to `security@dreamdex.io`, outside the repo. Draft privately and get authorization before sending.
+Do not submit a demo that presents unit tests, synthetic signatures, or a simulated payment as live chain evidence.
 
-## Conditional MVP payment
+## Remaining evidence checklist
 
-Three winners receive $500 each: $300 at announcement and $200 after the MVP places mainnet orders within 30 days of perps mainnet launch. This build is testnet-only. Mainnet work and the conditional payment remain pending.
+- [ ] Deploy the full facilitator Worker using the GitHub Actions secret described in docs/CLOUDFLARE_FREE_BACKEND.md.
+- [ ] Configure seller payout account, sponsor account, sponsor private key, CCD price, and resource-admin secret in Cloudflare.
+- [ ] Register a valid active testnet CIS-8004 agent with a reachable Agent Card, matching metadata hash, and registered agentWallet.
+- [ ] Obtain a genuine owner signature in Concordium Browser Wallet.
+- [ ] Run the buyer-agent CLI from the registered agentWallet.
+- [ ] Confirm the x402 transaction finalizes on Concordium testnet.
+- [ ] Confirm payer, payee, amount, and CCD asset match the request.
+- [ ] Retrieve the exact protected resource and record its SHA-256.
+- [ ] Capture the CCDScan transaction link and sanitized Pact audit states.
+- [ ] Exercise expired/replayed challenge, owner change, agentWallet change, invalid payment, and pending finality cases.
+- [ ] Record a three-minute demo showing blocked request → owner signature → x402 payment → finalized delivery.
+- [ ] Freeze the repo and verify every claim in the README, judge guide, and submission description.
+
+## Demo order
+
+1. Show the protected resource request blocked without a valid agent and owner binding.
+2. Show the active CIS-8004 badge and the current owner/agentWallet resolution.
+3. Sign the request-bound challenge in Concordium Browser Wallet.
+4. Show Pact verifying the signature against fresh testnet account credentials.
+5. Let the registered buyer agent request x402 terms and pay from its agentWallet.
+6. Show finality, transaction hash, protected bytes, and the sanitized audit record.
+
+If any real testnet step is still unavailable on recording day, say exactly which part is not live. Do not hide the gap with a mock.
+
+## Go-live plan
+
+Start with one seller and one protected resource. Sellers configure the canonical resource URL, CCD price, payout account, and sponsor. Buyers register agents with a valid CIS-8004 badge and set the agentWallet on-chain. Pact re-checks the registry binding before owner-proof acceptance and again before settlement. The facilitator sponsors network fees, requires finalized settlement, and records a transaction hash. Monitor registry outages, pending finality, failed transactions, D1 state conflicts, and resource integrity. Keep all sponsor and buyer wallet private keys in dedicated secret stores. Expand to more sellers only after the first testnet flow and failure cases are independently reproduced.
