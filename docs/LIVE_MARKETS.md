@@ -1,3 +1,5 @@
+> archived: this document describes the previous Somnia/dreamDEX perpetual-trading product. it is preserved as historical project context only and must not be used to operate Pact Access. the current product is the Concordium proof-gated access gateway. start with docs/PACT_ACCESS_SPEC.md, docs/INTEGRATION_DECISIONS.md, and docs/CLOUDFLARE_FREE_BACKEND.md.
+
 # Live testnet market data
 
 The landing page, workspace, setup details and authoring screen read BTC/ETH perp marks through the official dreamDEX SDK on Somnia Tokyo, chain 50383. Available bid/ask prices, pool addresses, observation age and the index oracle timestamp accompany the marks. These are testnet USDso quotes, not mainnet spot prices or executable order guarantees.
