@@ -150,7 +150,7 @@ function createSettlementRuntime(env: Env, requestId: string) {
 
       if (stored?.meta?.changes !== 1) {
         throw new Error(
-          "Concordium accepted the transaction, but Pact could not store its hash. Do not submit another payment.",
+          "PAYMENT_ALREADY_BROADCAST: Concordium accepted the transaction, but Pact could not store its hash. Do not submit another payment.",
         );
       }
       return hash;
@@ -320,7 +320,7 @@ async function uploadResource(request: Request, env: Env): Promise<Response> {
 async function findRequest(env: Env, requestId: string): Promise<any> {
   return env.DB.prepare(
     "SELECT request_id, resource_id, buyer_agent_id, owner_account, " +
-    "payer_account, state, payment_reference " +
+    "payer_account, state, payment_reference, expires_at " +
     "FROM pact_access_requests WHERE request_id = ? LIMIT 1",
   ).bind(requestId).first();
 }
@@ -477,13 +477,17 @@ async function deliverResource(
 
   const claimed = await claimDelivery(env, record.request_id, txHash);
   if (!claimed) {
-    return json({
-      code: "RESOURCE_ALREADY_RELEASED",
-      message: "This access request has already released its protected resource.",
-    }, 409);
+    const latest = await findRequest(env, record.request_id);
+    if (latest?.state !== "delivered" || latest.payment_reference !== txHash) {
+      return json({
+        code: "RESOURCE_DELIVERY_STATE_CONFLICT",
+        message: "Pact could not confirm the already-finalized access state.",
+      }, 409);
+    }
+    // Retry the same unguessable request id if the first response was lost.
   }
 
-  return new Response(request.method === "HEAD" ? null : resource.content, {
+  return new Response(resource.content, {
     status: 200,
     headers: {
       "Content-Type": resource.mime_type,
@@ -551,17 +555,14 @@ async function reconcilePending(
 }
 
 async function handleResource(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  if (request.method !== "GET") {
     return json({
       code: "METHOD_NOT_ALLOWED",
       message: "Use GET or HEAD to request this resource.",
     }, 405);
   }
 
-  const requestId =
-    request.headers.get("X-PACT-ACCESS-REQUEST") ||
-    request.headers.get("X-PACT-REQUEST-ID") ||
-    "";
+  const requestId = request.headers.get("X-PACT-ACCESS-REQUEST") || "";
 
   if (!/^[0-9a-f-]{36}$/i.test(requestId)) {
     return json({
@@ -578,11 +579,28 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
     }, 404);
   }
 
-  if (record.state === "delivered") {
+  const requestExpiresAt = Date.parse(record.expires_at);
+  if (!Number.isFinite(requestExpiresAt) || requestExpiresAt <= Date.now()) {
     return json({
-      code: "RESOURCE_ALREADY_RELEASED",
-      message: "This access request has already released its protected resource.",
-    }, 409);
+      code: "ACCESS_REQUEST_EXPIRED",
+      message: "The proof-gated access request expired. Request a fresh challenge.",
+    }, 410);
+  }
+
+  if (record.state === "delivered") {
+    if (!record.payment_reference) {
+      return json({
+        code: "PAYMENT_REFERENCE_MISSING",
+        message: "Pact cannot confirm the payment reference for this request.",
+      }, 503);
+    }
+    return deliverResource(
+      request,
+      env,
+      record,
+      record.payment_reference,
+      record.payer_account,
+    );
   }
 
   if (record.state === "payment_pending") {
