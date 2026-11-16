@@ -14,6 +14,7 @@ interface AccessChallenge {
 interface SignedProof {
   account: string;
   headerValue: string;
+  verifiedAt: string;
 }
 
 const agentIdPattern = /^[1-9A-HJ-NP-Za-km-z]{20,80}$/;
@@ -62,12 +63,37 @@ export function OwnerProofConsole() {
     setBusy("sign");
     setError("");
     try {
-      const result = await createConcordiumOwnerProof(challenge.message);
+      const walletProof = await createConcordiumOwnerProof(challenge.message);
       if (Date.parse(challenge.expiresAt) <= Date.now()) {
         setChallenge(null);
         throw new Error("The challenge expired while signing. Request a fresh challenge.");
       }
-      setProof({ account: result.account, headerValue: result.headerValue });
+      const verification = await api<{
+        requestId: string;
+        status: "verified";
+        verifiedAccount: string;
+        verifiedAt: string;
+        policyId: string;
+      }>("/access/proofs", {
+        method: "POST",
+        body: {
+          requestId: challenge.requestId,
+          proof: walletProof.headerValue,
+        },
+      });
+      if (
+        verification.status !== "verified" ||
+        verification.requestId !== challenge.requestId ||
+        verification.verifiedAccount !== walletProof.account ||
+        !Number.isFinite(Date.parse(verification.verifiedAt))
+      ) {
+        throw new Error("Pact could not confirm the owner signature. The resource remains locked.");
+      }
+      setProof({
+        account: walletProof.account,
+        headerValue: walletProof.headerValue,
+        verifiedAt: verification.verifiedAt,
+      });
     } catch (cause) {
       setError((cause as Error).message || "The Concordium wallet could not sign this challenge.");
     } finally {
@@ -147,7 +173,7 @@ export function OwnerProofConsole() {
                 {proof ? (
                   <div className="access-proof-ready" role="status">
                     <Check size={16}/>
-                    <div><strong>Owner signature created</strong><small>{proof.account}</small></div>
+                    <div><strong>Owner signature verified by Pact</strong><small>{proof.account} · {new Date(proof.verifiedAt).toLocaleTimeString()}</small></div>
                   </div>
                 ) : (
                   <button className="access-console-button secondary" onClick={() => void signChallenge()} disabled={expired || busy !== null}>
@@ -159,7 +185,7 @@ export function OwnerProofConsole() {
                     {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
                   </button>
                 )}
-                <p className="access-console-help">A signature alone does not settle payment or unlock the resource. The buyer agent must submit this proof through the configured x402 flow.</p>
+                <p className="access-console-help">Pact verified this signature against the owner's latest Concordium account credentials. Payment still has to settle through x402 before any resource can be released.</p>
               </div>
             )}
             {error && <p className="access-console-error" role="alert">{error}</p>}
