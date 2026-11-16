@@ -32,8 +32,6 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Type-check Worker
         run: npm run typecheck
-      - name: Type-check Worker
-        run: npm run typecheck
       - name: Bundle Worker
         run: npx wrangler deploy --dry-run --outdir .out --config wrangler.jsonc
       - name: Verify bundle output
