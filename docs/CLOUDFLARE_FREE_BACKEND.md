@@ -18,7 +18,8 @@ Pact Access uses a Vercel frontend and Cloudflare Workers Free + D1 for the acce
 
 - `GET /api/health`: checks the D1 binding and reports the current access API capabilities.
 - `POST /api/access/challenges`: validates the CIS-8004 badge with Concordium's official Agent Registry verifier, resolves the active owner and registered `agentWallet`, then stores a fresh 90-second challenge in D1.
-- `POST /api/access/proofs`: retrieves current finalized account credentials from Concordium testnet over gRPC-Web, checks the account and credential key thresholds, verifies the exact challenge message with Ed25519, consumes the challenge once, and records the result.
+- `GET /api/access/registry/{tokenAddress}`: read-only current CIS-8004 badge check. Returns the active owner and `agentWallet` only when the badge, chain, contract, and Agent Card checks pass.
+- `POST /api/access/proofs`: re-checks the current registry owner and `agentWallet`, retrieves finalized account credentials from Concordium testnet over gRPC-Web, checks account and credential key thresholds, verifies the exact challenge message with Ed25519, consumes the challenge once, and records the result.
 - A successful owner proof extends the D1 access-request expiry to 12 minutes for x402 negotiation and finality retries. The original signed challenge remains valid for only 90 seconds and cannot be reused.
 
 The owner console sends the wallet signature to Pact for verification. The copied buyer handoff includes only the verified request id and resource URL. Raw wallet signature material is not included in the handoff, D1 records or audit log.
@@ -96,6 +97,7 @@ A request with no proof, wrong payer, invalid x402 signature, failed or mismatch
 ## Production verification completed November 16, 2026
 
 - The main access Worker and the Vercel-proxied health route both report healthy D1 storage.
+- The read-only production registry endpoint returns HTTP 403 for an active testnet badge whose Agent Card fails the official verifier. This confirms the endpoint is enforcing the current badge checks rather than trusting an old registry record.
 - Vercel's rewrite removes the `Origin` header but retains `Referer`. The main Worker accepts an exact configured Origin, or, only when Origin is absent, an exact Referer origin matching `PACT_ORIGIN`.
 - Concordium testnet account info was fetched successfully over gRPC-Web. The Worker parser read the account's credential and Ed25519 public key.
 - A synthetic Ed25519 key pair passed the Worker sign/verify round trip. A tampered signature was rejected.
