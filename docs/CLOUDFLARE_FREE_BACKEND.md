@@ -1,83 +1,115 @@
 # Pact Access on Cloudflare Free
 
-This keeps the React frontend on Vercel and runs Pact Access API endpoints on Cloudflare Workers Free with D1. It does not use Containers, Durable Objects, paid Workers features, or a local filesystem.
+Pact Access uses a Vercel frontend and Cloudflare Workers Free + D1 for the access API. The deployment uses no Workers Paid plan, Containers, Durable Objects, or paid storage.
 
 ## Deployed resources
 
 - Frontend: `https://pact-access.vercel.app`
-- Worker: `https://pact-access-api.tajudeenisah02.workers.dev`
+- Main access Worker: `https://pact-access-api.tajudeenisah02.workers.dev`
+- Facilitator Worker: `https://pact-access-facilitator.tajudeenisah02.workers.dev`
 - D1 database: `pact-access`, id `b64ef749-48cd-4638-88d5-add8e8936fe3`
-- Vercel rewrites `/api/health` and `/api/access/*` to the Worker.
-- Trusted testnet CIS-8004 registry: contract `12802,0`.
-- Testnet CIS-8 registry: contract `12801,0`.
+- Vercel routes `/api/health`, challenge and proof calls to the main access Worker.
+- Vercel routes `/api/access/resource`, `/api/access/resources` and `/api/access/payment-health` to the facilitator Worker.
+- Concordium testnet CIS-8004 registry: `12802,0`.
+- Concordium testnet CIS-8 registry: `12801,0`.
 - Testnet CAIP-2 network: `ccd:4221332d34e1694168c2a0c0b3fd0f27`.
 
-## API scope
+## Main access API
 
-- `GET /api/health`: checks D1 and reports the Worker runtime capabilities.
-- `POST /api/access/challenges`: validates a CIS-8004 badge using the official Concordium Agent Registry service, resolves the active owner and registered `agentWallet`, and stores a 90-second owner-signature challenge in D1.
-- `POST /api/access/proofs`: reads fresh account credentials from the public Concordium testnet gRPC-Web endpoint, checks account and per-credential key thresholds, verifies the exact server-issued challenge using Ed25519, and atomically marks the challenge `proof_verified`.
-- `GET /api/access/resource`: deliberately returns 503 until finalized x402 settlement is implemented in the Worker runtime. It never releases data while payments are disabled.
+- `GET /api/health`: checks the D1 binding and reports the current access API capabilities.
+- `POST /api/access/challenges`: validates the CIS-8004 badge with Concordium's official Agent Registry verifier, resolves the active owner and registered `agentWallet`, then stores a fresh 90-second challenge in D1.
+- `POST /api/access/proofs`: retrieves current finalized account credentials from Concordium testnet over gRPC-Web, checks the account and credential key thresholds, verifies the exact challenge message with Ed25519, consumes the challenge once, and records the result.
+- A successful owner proof extends the D1 access-request expiry to 12 minutes for x402 negotiation and finality retries. The original signed challenge remains valid for only 90 seconds and cannot be reused.
+
+The owner console sends the wallet signature to Pact for verification. The copied buyer handoff includes only the verified request id and resource URL. Raw wallet signature material is not included in the handoff, D1 records or audit log.
 
 ## Concordium badge verification
 
-The Worker checks the CIS-2 token's embedded contract index and subindex against the trusted testnet registry configuration. It then requires an active on-chain record, a valid badge, owner and network consistency, a fetched Agent Card whose hash matches the on-chain metadata hash, and a registered `agentWallet`. Warning-only legacy notices do not cause rejection, but actual badge errors do.
+The main Worker decodes the CIS-2 token address and requires the embedded contract index and subindex to equal the trusted testnet registry `12802,0`. It then requires:
+- an active on-chain CIS-8004 record;
+- the badge to match the token address, owner, chain and expected registry;
+- a reachable Agent Card;
+- a SHA-256 hash that matches the on-chain metadata hash;
+- a registered agent payment wallet.
 
-The testnet CIS-8004 registry is contract `12802,0`, and CIS-8 is `12801,0`. These values were read from the official registry's `contract_info` tool rather than copied from mainnet.
+Warning-only legacy format notices do not cause rejection. Actual badge errors do. Do not loosen these checks to accept old or incomplete badges.
 
 ## Owner signature verification
 
-The owner signs the exact JSON message returned by Pact. The Worker reloads the account's current credentials from the latest finalized testnet state for each verification attempt. It validates the returned account address, the account credential threshold, each credential's key threshold, and every supplied Ed25519 signature.
+Pact verifies the owner against fresh account credentials from the latest finalized Concordium testnet state for each attempt. It validates the returned account address, account credential threshold, every credential key threshold, and every supplied Ed25519 signature.
 
-Concordium's SDK message digest is SHA-256 over the 32-byte account address, eight zero bytes, and the exact UTF-8 message bytes. Pact uses the same digest construction and Web Crypto Ed25519 verification. Credentials and keys are never cached between proof requests, because account keys can be rotated.
+The Concordium message digest is SHA-256 over the 32-byte account address, eight zero bytes, and exact UTF-8 challenge message bytes. The Worker verifies this with Web Crypto Ed25519. Credentials and keys are not cached, since account keys can change.
 
-The raw wallet signature is transient request data. Pact does not store it or log it. D1 stores only the request state, challenge-consumption timestamp and a coarse audit reason code. Successful proof state is a prerequisite for the later x402 gate, but it does not itself permit resource delivery.
+The raw signature is transient request data. D1 stores request state, challenge-consumption time and coarse audit reason codes only. A verified owner proof does not itself release the resource.
 
-A denied or expired proof blocks that challenge. The frontend clears a consumed challenge and requires a fresh one. Concordium service/network failures leave the challenge unconsumed until expiry so a temporary outage does not burn the user's proof attempt.
+## Facilitator build and deployment status
 
-## Production checks completed November 16, 2026
+The full x402 facilitator implementation is in `cloudflare/facilitator-worker/`. It uses the official `@x402/concordium` exact facilitator scheme with a custom signer backed by Concordium's gRPC-Web client, not the Node-only gRPC helper.
 
-- Worker health and Vercel-proxied health return `status: ok` and `storage: ready`.
-- The Vercel rewrite strips the `Origin` header but preserves `Referer`. The Worker accepts an exact configured Origin, or, only when Origin is missing, an exact Referer origin matching `PACT_ORIGIN`. Missing or mismatched site headers are rejected.
-- The public testnet account lookup returned gRPC-Web status 0. The Worker parser read one credential and its Ed25519 public key from a live account response.
-- A synthetic Ed25519 key pair passed the sign/verify round trip inside Workers. A tampered signature was rejected.
-- A production same-origin proof request with a synthetic all-zero signature returned HTTP 401 `OWNER_PROOF_REJECTED`. D1 recorded `state=blocked` and `reason_code=invalid_signature`. No signature bytes were persisted.
-- The invalid test row and temporary proof smoke page/probe workers are removed after testing.
-- The protected-resource route still returns 503. No wallet signatures from a real owner, payments, chain transactions or protected data releases have been processed.
+- Dedicated package type-check passes.
+- Wrangler dry-run bundle passes.
+- Bundle size: about 1.13 MiB uncompressed.
+- The Worker is pinned to the 10 ms Workers Free CPU limit and uses `nodejs_compat` for one utility shim in the SDK bundle.
+- The D1 `pact_access_resources` table is created.
+- The production facilitator URL currently runs a small fail-closed placeholder. `GET /api/access/payment-health` reports `x402: not-deployed`, `facilitatorConfigured: false`, `paymentsEnabled: false`, and resource delivery disabled.
+- `GET /api/access/resource` continues to return HTTP 503.
+- The final bundled x402 Worker has not yet been deployed because the GitHub repository does not have the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets. The build workflow detects that and skips deployment safely.
 
-A valid real owner proof still needs to be demonstrated with an agent badge that passes the official registry checks. The public testnet badges inspected so far fail because of stale or unreachable Agent Cards, incorrect token-address fields, incorrect contract references, or mismatched metadata hashes. Do not weaken the badge checks to make these legacy records pass.
+The workflow is `.github/workflows/access-facilitator.yml`. Once both GitHub Actions secrets are configured, the next push under the facilitator paths will apply the D1 migration, deploy the full Worker and verify that payment remains disabled until testnet settings are supplied.
 
-## Data safety
+## Required setup to activate testnet payments
 
-The challenge is valid for 90 seconds. D1 stores request context, expiry, state and audit events, not raw wallet signatures or private keys. Resource delivery remains disabled until a finalized payment is independently verified.
+The following are deliberately blank. No payment can be made until all of them are configured.
+
+GitHub repository Actions secrets:
+- `CLOUDFLARE_API_TOKEN`: Cloudflare API token with Workers Scripts edit and D1 edit permissions.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account identifier.
+
+Cloudflare Worker variables in `cloudflare/facilitator-worker/wrangler.jsonc`:
+- `PACT_ACCESS_PRICE_ATOMIC`: the resource price in micro-CCD atomic units.
+- `PACT_SELLER_PAY_TO`: the seller's Concordium testnet account.
+- `CCD_FACILITATOR_ADDRESS`: the sponsor account that pays network fees.
+
+Cloudflare Worker secrets:
+- `CCD_FACILITATOR_PRIVATE_KEY`: private key for the sponsor account. Store this only as a Cloudflare Worker secret.
+- `PACT_RESOURCE_ADMIN_KEY`: a separate random bearer secret for the protected-resource upload route.
+
+Do not paste private keys or secret values into chat, source files, Git commits, or README. The buyer agent must also have an on-chain CIS-8004 badge with a valid Agent Card and a configured `agentWallet`.
+
+## Protected resource flow
+
+1. Upload one protected resource with `PUT /api/access/resources`, using `Authorization: Bearer <PACT_RESOURCE_ADMIN_KEY>`.
+2. Send JSON with `resourceId` equal to `https://pact-access.vercel.app/api/access/resource`, `contentType` set to `application/json`, `text/csv` or `text/plain`, and the content string. The limit is 256 KiB.
+3. A buyer agent requests `GET /api/access/resource` with `X-PACT-ACCESS-REQUEST` set to the verified request id.
+4. Pact responds with x402 v2 payment requirements. The buyer signs the exact CCD payment payload from its registered agent wallet.
+5. The facilitator checks and settles the payment, waits for Concordium finalization, and verifies payer, payee, amount and CCD asset.
+6. Only after finality does Pact release the D1 resource. The request id and payment hash make retries idempotent. An uncertain broadcast remains locked to prevent a duplicate payment.
+
+A request with no proof, wrong payer, invalid x402 signature, failed or mismatched finalized transaction, expired approval, or unknown payment state must never release resource bytes.
+
+## Production verification completed November 16, 2026
+
+- The main access Worker and the Vercel-proxied health route both report healthy D1 storage.
+- Vercel's rewrite removes the `Origin` header but retains `Referer`. The main Worker accepts an exact configured Origin, or, only when Origin is absent, an exact Referer origin matching `PACT_ORIGIN`.
+- Concordium testnet account info was fetched successfully over gRPC-Web. The Worker parser read the account's credential and Ed25519 public key.
+- A synthetic Ed25519 key pair passed the Worker sign/verify round trip. A tampered signature was rejected.
+- A same-origin production proof request with a synthetic all-zero signature returned HTTP 401 `OWNER_PROOF_REJECTED`. D1 recorded `state=blocked` and `reason_code=invalid_signature`. No signature bytes were persisted.
+- The invalid smoke-test row and temporary probe Workers were removed. D1 was clean before creating the resource table.
+- The public testnet badges inspected so far fail the official verifier for stale or unreachable Agent Cards, missing token/contract fields, or metadata hash mismatches. A valid live badge and genuine owner proof are still required.
+- No real wallet proof, x402 payment, CCDExplorer transaction link, or protected resource delivery has been demonstrated.
 
 ## Free-plan constraints
 
-This deployment uses Cloudflare Workers Free and D1 only. Avoid Containers and paid Workers features. Keep Worker CPU, request and D1 usage within the free allowances. Concordium account lookup uses the public testnet gRPC-Web endpoint through Worker `fetch`, not Node-only `@grpc/grpc-js`.
-
-## Required deployment settings
-
-- `PACT_ORIGIN`: `https://pact-access.vercel.app`
-- `PACT_ACCESS_SELLER_ID`: `pact-access-demo`
-- `PACT_ACCESS_RESOURCE_URL`: `https://pact-access.vercel.app/api/access/resource`
-- `CONCORDIUM_AGENT_REGISTRY_INDEX`: `12802`
-- `CONCORDIUM_AGENT_REGISTRY_SUBINDEX`: `0`
-
-The D1 schema migration is `cloudflare/migrations/access/0001_init.sql`, and `wrangler.access.jsonc` points to this migration directory.
+Use Workers Free and D1 only. Keep CPU at 10 ms/request, resource content at 256 KiB, and request/D1 usage inside free allowances. Do not add Containers, paid Workers, paid storage or Durable Objects unless the plan changes. Review Cloudflare's live limits before increasing throughput:
+`https://developers.cloudflare.com/workers/platform/limits/`
 
 ## Local commands
 
 ```powershell
-pnpm install --frozen-lockfile
-pnpm access:migrate:local
-pnpm access:dev
+cd cloudflare/facilitator-worker
+npm install
+npm run typecheck
+npm run build
 ```
 
-Deploy or apply the remote migration only when intentionally changing the live Worker or D1 schema:
-
-```powershell
-pnpm access:migrate:remote
-pnpm access:deploy
-```
-
-Keep `cloudflare/access-api.js`, `wrangler.access.jsonc`, the D1 migration and this runbook in sync.
+After the deployment credentials exist in GitHub Actions, pushing facilitator changes applies the resource migration and deploys the full Worker. For manual local deployment, configure the Cloudflare API token and account id in your shell first, then use `npm run deploy`. Keep secrets in Cloudflare Worker secrets, not in Wrangler vars or source.
