@@ -60,7 +60,7 @@ See [the Cloudflare Free backend runbook](docs/CLOUDFLARE_FREE_BACKEND.md) for d
 
 the production frontend is served through Vercel. the main access API and a fail-closed facilitator placeholder run on Cloudflare Workers Free and share D1. the main Worker handles trusted registry checks, 90-second owner challenges, and server-side Concordium account-signature verification. a successful proof opens a 12-minute access window for x402 settlement.
 
-the full Concordium x402 facilitator implementation lives in `cloudflare/facilitator-worker/`. its TypeScript check and Wrangler bundle pass, but the full bundle is not deployed yet because the repository is missing the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets. the live facilitator health route reports `paymentsEnabled: false`, and the resource route returns HTTP 503 until the final Worker and testnet payment settings are configured.
+the full Concordium x402 facilitator implementation lives in `cloudflare/facilitator-worker/`. its TypeScript check and Wrangler bundle pass, but the full bundle is not deployed yet because the repository is missing the `CLOUDFLARE_API_TOKEN` Actions secret. the live facilitator health route reports `paymentsEnabled: false`, and the resource route returns HTTP 503 until the final Worker and testnet payment settings are configured.
 
 see [the Cloudflare Free backend runbook](docs/CLOUDFLARE_FREE_BACKEND.md) and [integration decisions](docs/INTEGRATION_DECISIONS.md) for current trust boundaries, required deployment secrets, and remaining proof/payment work.
 
