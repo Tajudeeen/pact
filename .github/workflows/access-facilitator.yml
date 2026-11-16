@@ -46,3 +46,4 @@ jobs:
           path: cloudflare/facilitator-worker/.out/
           if-no-files-found: error
           retention-days: 3
+          include-hidden-files: true
