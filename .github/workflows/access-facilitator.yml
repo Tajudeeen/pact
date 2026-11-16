@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 concurrency:
   group: pact-access-facilitator-build
@@ -65,7 +64,7 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "Cloudflare credentials are not configured. Build artifact only, no deployment."
+            echo "CLOUDFLARE_API_TOKEN is not configured. Build artifact only, no deployment."
           fi
       - name: Apply protected-resource D1 migration
         if: ${{ steps.cloudflare-credentials.outputs.available == 'true' }}
