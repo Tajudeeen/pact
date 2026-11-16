@@ -24,16 +24,18 @@ Pact puts the verification gate in the request and payment path. Missing, invali
 
 ## Current status
 
-This repository is being reworked from its original Somnia/dreamDEX perps prototype into Pact Access for the Concordium Trusted Agents Hackathon.
+Pact has a working free-tier access and owner-proof path. The complete x402 payment path is still being prepared.
 
-- Original trading implementation remains available in Git history.
-- New product specification: [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md).
-- Integration research and decisions: [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md).
-- The landing page now presents Pact Access. Legacy perps routes are hidden from the app entry points.
-- Concordium testnet uses `ccd:4221332d34e1694168c2a0c0b3fd0f27`. The current integration targets the official `@x402/concordium`, `@x402/core`, and `@x402/hono` 2.31.0 packages and Concordium Web SDK 12.0.2.
-- PR #9 merged the product pivot. PR #11 contains the phase-two implementation and remains a draft pending live testnet proof.
-- Implemented: Concordium SDK account verification and transaction status adapters, official Agent Registry MCP resolver, CIS-8004 owner/agentWallet binding, request-bound wallet signing, x402 Hono hooks and middleware factory, server-side buyer-agent payment wrapper, self-hosted finalization-required Concordium facilitator, finality reconciliation, SQLite state/audit persistence, and protected file resource routes.
-- The server can mount Pact Access when `PACT_ACCESS_ENABLED=true`. The facilitator still needs a separate deployment and sponsor secret, while the registry ID, seller resource, buyer-agent key, and testnet transactions need configuration and end-to-end proof.
+- The React app is live at [pact-access.vercel.app](https://pact-access.vercel.app).
+- The main Cloudflare Worker and D1 database handle Concordium CIS-8004 badge checks, one-use challenges, and server-side owner-signature verification.
+- Owner signatures are verified against fresh Concordium testnet account credentials and their account/key thresholds. The copied agent handoff contains the verified request id, not the raw signature.
+- Production negative testing confirmed that an invalid signature returns HTTP 401 and is recorded as blocked in D1.
+- The dedicated x402 facilitator source is in `cloudflare/facilitator-worker/`. Its TypeScript check and Wrangler bundle pass. The bundle is about 1.13 MiB and is configured for the Workers Free CPU budget.
+- The facilitator URL currently runs a fail-closed placeholder. It reports `x402: not-deployed`, has payment configuration disabled, and returns HTTP 503 for protected resource requests. The full bundle is not deployed because the GitHub repository is missing the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets.
+- The sponsor account, seller payout account, price, sponsor private key, and protected-resource admin key remain unset. No testnet payment or real resource delivery has occurred.
+- The public testnet agent badges inspected so far fail the official Agent Registry verifier. A valid badge, owner proof, testnet payment transaction, CCDExplorer link and end-to-end demo are still required.
+
+See [the Cloudflare Free backend runbook](docs/CLOUDFLARE_FREE_BACKEND.md) for deployment details and the exact setup steps. Original Somnia/dreamDEX perps history is preserved in Git history. The current product scope is Pact Access for the Concordium Trusted Agents Hackathon.
 
 ## Initial build scope
 
