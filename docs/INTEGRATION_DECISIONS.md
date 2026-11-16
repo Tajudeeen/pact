@@ -1,110 +1,72 @@
 # Pact Access integration decisions
 
-Last checked: 2026-11-15
+This document describes the current Concordium implementation. The previous Somnia/dreamDEX perps runtime is historical and is not used by Pact Access.
 
-This document records external integration facts that affect the implementation. It is not evidence that Pact has integrated or deployed them.
+## 1. Product boundary
 
-## 1. Concordium account ownership proof
+Pact is a proof-gated gateway for paid APIs, datasets, and agent tools. It protects one canonical resource until the buyer agent's current CIS-8004 owner authorizes the request and the agent pays from its registered agentWallet.
 
-The first Pact gate uses Concordium's documented account-signature verification flow, not a Web3 ID attribute presentation.
+The first proof is an account-control proof. A signature proves control of the Concordium account key that signed it. It does not prove age, nationality, uniqueness, or another personal identity attribute. Pact must not market this version as a ZK human-identity verifier.
 
-1. The server creates a random 32-byte challenge and stores it with the exact seller, resource, agent, payer, network, policy, and expiry.
-2. The server returns one canonical, domain-separated message containing those fields.
-3. The buyer connects the Concordium Browser Wallet and signs that exact message with the current agent owner account.
-4. The backend fetches fresh account information from the matching Concordium network node.
-5. The backend verifies the signature against the account's current on-chain credentials with `verifyMessageSignature`.
-6. Pact consumes the challenge once, then checks that the signed account is the current CIS-8004 owner and that the on-chain `agentWallet` is the x402 payer.
+## 2. Agent registry
 
-Official docs:
-- Account ownership signature proof: https://docs.concordium.com/en/mainnet/tutorials/verify-account-ownership-signature-proofs/signature-proofs.html
-- Wallet connector and signMessage example: https://docs.concordium.com/en/mainnet/tutorials/verify-account-ownership-signature-proofs/signature-proofs.html
-- Concordium account/identity relationship: https://docs.concordium.com/en/mainnet/learn/accounts/index.html
+Pact trusts the Concordium testnet CIS-8004 registry at contract 12802,0. The Worker decodes the badge token address and rejects any badge outside that contract. It then calls the official Agent Registry MCP verification operations:
 
-Important distinction: a signature proof establishes control of an account's private key. It does not prove an age, nationality, or other identity attribute. Concordium accounts are created from verified identity credentials, and the Agent Registry links agent ownership to that identity layer. Account records can have one or more credential holders, and Concordium also supports company identities. Pact therefore describes the initial gate as a verified Concordium owner account, not a guarantee that exactly one natural person controls every account.
+- check-badge validates the on-chain record, active status, badge fields, owner, chain, and registry contract.
+- verify-agent-card fetches the Agent Card and verifies its hash against the on-chain metadata hash.
+- agent_by_token_address resolves the current owner and registered agentWallet.
 
-The server uses a fresh 32-byte random challenge encoded as 64 hex characters and a 90-second expiry. The signed message is bound to the request, seller, resource, buyer agent, owner account, registered payment wallet, network, policy, and expiry. Challenges are persisted and consumed atomically once. The server fetches fresh account credentials at verification time, never trusts a client-provided accountInfo object, and never verifies signatures in the browser.
+Pact requires an active record, matching badge/token/chain/contract/owner fields, a reachable Agent Card, a matching metadata hash, a valid owner address, and a valid payment wallet. Warning-only legacy notices do not override an actual validation error.
 
-Canonical CAIP-2 network identifiers:
-- Testnet: `ccd:4221332d34e1694168c2a0c0b3fd0f27`
-- Mainnet: `ccd:9dd9ca4d19e9393877d2c44b70f89acb`
+The same registry verification runs at challenge issuance, again before the owner signature is accepted, and through the facilitator before x402 terms are returned and immediately before settlement. An owner or agentWallet change blocks an unbroadcast request. A transaction already broadcast is reconciled against its original hash to prevent duplicate payment.
 
-The first release uses testnet only.
+## 3. Owner challenge and signature
 
-## 2. Agent ownership must be proven, not asserted
+The main access Worker issues a 32-byte random challenge valid for 90 seconds. Its exact message binds:
+- request ID, seller, resource, buyer agent, and network;
+- the registry-resolved owner account and agentWallet;
+- random challenge bytes, expiry, and policy ID.
 
-The Agent Registry uses CIS-8004 records. The registry record has an on-chain owner. The Concordium Badge resolver checks the registry record, owner, active status, and Agent Card hash.
+The owner signs that exact message in Concordium Browser Wallet. The browser sends the base64url proof presentation to POST /api/access/proofs with the request ID. The Worker loads current finalized Concordium account info over the testnet gRPC-Web endpoint, checks the account address and signature thresholds, and verifies all supplied Ed25519 signatures.
 
-A badge or Agent Card alone is not a proof that the current payer is controlled by that owner. Pact resolves the agent's current owner and requires the signed account to equal that owner, while the x402 sender must equal the current on-chain `agentWallet`. CIS-8004 `setAgentWallet` requires the owner to authorize the change and the new wallet to prove control. This gives the registered owner a separate, explicitly registered payment wallet for the autonomous agent.
+The digest follows the Concordium account-signature format: SHA-256 over the 32-byte account address, eight zero bytes, and the exact UTF-8 message. Account credentials and public keys are fetched fresh for each verification. Pact does not trust account data supplied by the browser.
 
-Official docs:
-- Agent Registry overview: https://docs.concordium.com/en/mainnet/technical-reference/agent-registry/index.html
-- CIS-8004: https://docs.concordium.com/en/mainnet/technical-reference/agent-registry/cis-8004.html
-- Concordium Badge: https://docs.concordium.com/en/mainnet/technical-reference/agent-registry/concordium-badge.html
+A successful proof consumes the challenge once and extends the access request to a 12-minute payment window. D1 stores state and coarse audit reasons, never the raw signature. The buyer handoff contains only the verified request ID and resource URL.
 
-## 3. Concordium x402 is an official implementation
+## 4. Official Concordium x402 scheme
 
-Concordium's x402 integration is in the official x402 repository and has a dedicated TypeScript package:
+Pact uses the official @x402/concordium Exact facilitator scheme. It does not implement a custom payment scheme. The facilitator Worker injects a custom signer adapter backed by Concordium's ConcordiumGRPCWebClient, avoiding the Node-only gRPC transport while retaining the official scheme's transaction checks.
 
-`@x402/concordium@2.31.0`
+The first release supports native CCD only. The payment requirements bind the exact resource URL, network, amount in micro-CCD, seller payout account, and sponsor fee-payer address. The signed sender must equal the current registry agentWallet.
 
-It implements the Exact scheme with sponsored V1 transactions and includes client, server, and facilitator components. The package's server scheme parses fixed prices and enriches requirements with the facilitator's `feePayer`. The facilitator validates the sender, sponsor, recipient, exact amount, asset, expiry, sender signature, and transaction safety, then submits and waits for finalization.
+The facilitator requires finalization. It sponsors the transaction, submits it to Concordium, waits for the finalized block outcome, and checks the sender, recipient, amount, and asset before Pact marks the request paid. A pending or failed transaction never releases the resource.
 
-Official sources:
-- Concordium x402 integration guide: https://docs.concordium.com/en/mainnet/how-to/integrations/x402-integration.html
-- Package usage and API: https://www.npmjs.com/package/@x402/concordium
-- Hono middleware: https://www.npmjs.com/package/@x402/hono
-- Official x402 facilitator responsibilities: https://github.com/x402-foundation/x402/blob/main/docs/core-concepts/facilitator.md
+## 5. Worker and data boundaries
 
-The current official TypeScript packages are `@x402/concordium@2.31.0`, `@x402/core@2.31.0`, and `@x402/hono@2.31.0`. The Concordium package implements x402 protocol V2 using a partially signed Concordium V1 sponsored transaction. Its server scheme defaults to the `authorization` payment flow, which settles before the resource handler. For Hono, register the package's `ExactConcordiumScheme` with `x402ResourceServer`, then wrap it in `x402HTTPResourceServer` and `paymentMiddlewareFromHTTPServer`. Use a facilitator endpoint that advertises the Concordium testnet network and Exact scheme. Do not assume the default `https://x402.org/facilitator` supports Concordium. The Concordium facilitator must be configured with a sponsor account and its private key kept server-side.
+- Main access Worker: registry verification, owner challenges, owner-signature verification, and proof state.
+- Facilitator Worker: protected-resource upload, x402 requirements, official scheme settlement, finality reconciliation, and resource delivery.
+- D1: one-use request state, sanitized audit events, and the first protected resource.
+- Vercel: React frontend and same-origin route proxying.
+- Buyer-agent CLI: server-side x402 client using the registered agentWallet private key.
 
-The implementation now exposes concrete adapters in `server/access/concordium-node.ts`, `server/access/concordium-registry-mcp.ts`, `server/access/x402-hooks.ts`, and `server/access/x402-runtime.ts`. `createPactAccessRuntime` composes these with the SQLite repository, challenge issuer, pipeline, and seller-owned resource callback. It remains dynamically loaded until the developer installs the pinned packages and regenerates the lockfile.
+The protected resource is limited to 256 KiB in the first release. Supported content types are JSON, CSV, and plain text. Pact checks the resource SHA-256 before release and records a delivered state tied to the transaction reference.
 
-The x402 lifecycle is wired as follows:
-- `x402HTTPResourceServer.onProtectedRequest` calls `verifyOwner` before x402 emits payment requirements. It reads `x-pact-access-request` and `x-pact-owner-proof` headers. The proof header is base64url-encoded JSON containing the Concordium account and wallet signature.
-- `x402ResourceServer.onBeforeSettle` calls `beginExternalSettlement` after facilitator verification. It checks the x402 sender, canonical resource URL, amount, asset, recipient, and network against the seller's server-side payment configuration before settlement.
-- `x402ResourceServer.onAfterSettle` calls `completeExternalSettlement` with the finalized transaction reference, network, and facilitator-confirmed payer. x402 treats after-settle hooks as observers and isolates their errors. The protected Hono handler independently checks the persisted state and releases bytes only if the paid transition committed. A persistence failure leaves the request pending and the resource locked.
-- The protected Hono handler calls `deliverPaidResource`. It returns bytes only when the stored state is `paid`. If a prior request is already paid but the handler did not run, `onProtectedRequest` skips another charge and grants the handler access to complete delivery. If the after-settle observer fails before the paid state commits, the handler sees `payment_pending` and refuses delivery.
+## 6. Failure and retry rules
 
-Ambiguous settlement failures remain in `payment_pending` and are blocked from another charge until reconciliation. If the facilitator returns a transaction hash, `ConcordiumGrpcSettlementReconciler` queries the testnet node with `getBlockItemStatus`. Only a finalized successful outcome can transition the request to `paid`. A committed, received, or unknown transaction remains pending. A finalized rejected transaction becomes failed. If no transaction hash was returned, automated reconciliation is impossible and the request remains locked for manual review.
+- Invalid badge, wrong registry, revoked agent, changed owner, or changed agentWallet: block before payment.
+- Invalid, expired, wrong-account, or replayed owner signature: block and audit.
+- Registry or Concordium account-info outage: fail closed. Transient registry/RPC outages do not consume the owner's challenge.
+- Wrong x402 network, asset, sender, recipient, amount, or sponsor: reject.
+- Pending finality: keep the same request and transaction reference. Retry reconciliation only.
+- Uncertain broadcast: keep the request locked. Never create a second payment because the first response was lost.
+- Resource missing or hash mismatch: do not release bytes.
 
-This keeps x402 responsible for its standard 402/verify/settle flow while Pact owns the owner gate, agentWallet binding, access state, audit, and delivery boundary.
+## 7. Free-tier limits and deployment
 
-The package's client example uses `buildBasicAccountSigner` with a private key. `server/access/buyer-agent.ts` now creates the official `x402Client` using `ExactConcordiumScheme` and wraps `fetch` with `@x402/fetch`. It accepts the owner proof headers and lets the x402 client handle the 402/payment retry. Run this only inside the buyer-agent process, with the agentWallet key loaded from a server-side secret. Never put the agentWallet private key in the browser or repository. The registered owner uses the Concordium Browser Wallet only to sign Pact's short-lived ownership message.
+The facilitator Worker is configured for the Workers Free 10 ms CPU limit. Its checked bundle is approximately 1.13 MiB, below the script size limit. A real x402 transaction is still needed to measure runtime CPU use and finality behavior. No live payment or resource delivery has been demonstrated.
 
-The testnet CAIP-2 identifier is `ccd:4221332d34e1694168c2a0c0b3fd0f27`; the package documents the testnet gRPC endpoint as `grpc.testnet.concordium.com:20000`. Native CCD amounts use six decimal places, so 1 CCD is `1000000` atomic units. The facilitator's `requireFinalization` option defaults to true and should remain enabled for resource release.
+The main access Worker is deployed and healthy. The final facilitator bundle remains undeployed because GitHub Actions is missing the CLOUDFLARE_API_TOKEN secret. The account ID is a non-secret workflow value. See docs/CLOUDFLARE_FREE_BACKEND.md.
 
-The payment response is not enough by itself. Pact must verify the exact sender matches the current on-chain `agentWallet`, then release the resource only after the facilitator confirms finalization. Pending or failed settlement must never deliver resource bytes.
+## 8. Evidence boundary
 
-## 4. Product and implementation consequences
-
-- Do not write a custom x402 payment scheme.
-- Do not use an Agent Registry badge as a stand-alone authorization proof.
-- Issue a fresh, server-side account-signature challenge bound to the access request and policy.
-- Keep proof verification and access-policy checks separate.
-- Bind the signed Concordium account to the registry owner, then bind the x402 sender to the on-chain `agentWallet`.
-- Verify payment before invoking the protected resource handler.
-- Make delivery idempotent and avoid returning resource bytes during proof or payment verification.
-- Record sanitized request IDs, policy versions, verifier outcomes, settlement references, and delivery status. Do not log identity attributes or raw proof material.
-- Keep testnet fixtures clearly marked. No fixture is a wallet proof, transaction, or delivery receipt.
-
-## 5. Work remaining
-
-- [ ] Add and pin compatible `@x402/concordium`, `@x402/core`, `@x402/hono`, and Concordium wallet SDK packages, then commit the pnpm lockfile.
-- [ ] Wire Concordium Browser Wallet connector and `provider.signMessage` into the frontend.
-- [ ] Wire `@concordium/web-sdk` node client and `verifyMessageSignature` into the backend.
-- [x] Implement fresh challenge creation, short expiry, message binding, registry-derived owner/payer fields, and one-time challenge consumption.\n- [x] Implement SQLite persistence with atomic state transitions, one-time challenge consumption, delivery claims, and sanitized audit events.
-- [x] Implement account-signature verification and strict CIS-8004 owner/payer binding adapters.
-- [ ] Verify the signed owner account ↔ CIS-8004 `agentWallet` ↔ x402 payer binding end to end against testnet.
-- [x] Implement a fail-closed orchestration pipeline behind typed adapters, including proof, owner binding, x402 settlement, reconciliation, and idempotent resource delivery contracts.
-- [ ] Add one protected seller resource and one buyer flow.
-- [ ] Add x402 Hono middleware and configure a Concordium facilitator with `requireFinalization: true`.
-- [ ] Keep the buyer agentWallet private key in the buyer-agent runtime secret store only.
-- [ ] Confirm testnet settlement/finality and capture explorer evidence.
-- [ ] Run local typecheck, unit tests, build, and end-to-end smoke tests.
-- [ ] Deploy and inspect the real flow before making demo claims.
-
-### Facilitator deployment
-
-Pact includes a separate Node facilitator service under `server/facilitator`. It uses the official `x402Facilitator` core and Concordium `ExactConcordiumScheme`, with finalization required. The facilitator is pinned to one testnet network, one canonical resource URL, one seller payout account, one amount, and one asset through before-verify and before-settle hooks. The seller app cannot ask this sponsor to settle arbitrary destinations or prices.
-
-The facilitator exposes `/supported`, `/verify`, and `/settle`. All three require a shared bearer token configured independently in the seller app and facilitator environment. The health endpoint is public. The seller's `HTTPFacilitatorClient` sends the bearer token for all facilitator requests. When settlement throws a typed x402 `SettleError`, the HTTP endpoint preserves its transaction hash in the standard failure response so the seller can reconcile finalization against Concordium.
+A passing local test proves only the tested code path. A synthetic signature is not a real owner wallet proof. A public testnet RPC read is not a payment. A build artifact is not a deployed facilitator. A payment hash is not enough without finalized outcome checks and resource delivery. The release gate is a reproduced testnet flow with a valid badge, genuine owner signature, finalized CCD payment, exact protected bytes, sanitized audit record, and CCDScan link.
