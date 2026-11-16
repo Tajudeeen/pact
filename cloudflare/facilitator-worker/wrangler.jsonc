@@ -32,5 +32,8 @@
   },
   "limits": {
     "cpu_ms": 10
-  }
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
 }
