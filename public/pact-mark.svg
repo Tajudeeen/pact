@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs><linearGradient id="pact" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#C4A3FF"/><stop offset=".52" stop-color="#8B5CF6"/><stop offset="1" stop-color="#5B21B6"/></linearGradient></defs>
-  <path d="M12 8h27a17 17 0 0 1 0 34H27v14H12V8Zm15 15v4h12a2 2 0 0 0 0-4H27Z" fill="url(#pact)"/>
-  <path d="M27 42h12a17 17 0 0 0 17-17" stroke="#E9DFFF" stroke-opacity=".48" stroke-width="2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+ <defs><linearGradient id="shield" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse"><stop stop-color="#B9A0FF"/><stop offset=".55" stop-color="#8057E8"/><stop offset="1" stop-color="#5732B8"/></linearGradient></defs>
+ <path d="M64 8 108 25v31c0 29-18 49-44 64C38 105 20 85 20 56V25L64 8Z" fill="url(#shield)" fill-opacity=".14" stroke="url(#shield)" stroke-width="5" stroke-linejoin="round"/>
+ <path d="M42 51h16a13 13 0 0 1 0 26H42V51Z" stroke="#A78BFA" stroke-width="7" stroke-linejoin="round"/>
+ <path d="M86 77H70a13 13 0 0 1 0-26h16v26Z" stroke="#7C5CE0" stroke-width="7" stroke-linejoin="round"/>
+ <path d="M54 64h20" stroke="#D8CCFF" stroke-width="6" stroke-linecap="round"/>
+ <circle cx="64" cy="64" r="5" fill="#F4F0FF"/>
 </svg>
