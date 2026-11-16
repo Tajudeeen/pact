@@ -258,7 +258,7 @@ async function issueChallenge(request, env, origin) {
   if (origin !== env.PACT_ORIGIN)
     return json({
       code: "ORIGIN_REJECTED",
-      message: "Request origin is not allowed.",
+      message: `Request origin is not allowed. [origin=${origin || "(missing)"}; referer=${request.headers.get("referer") || "(missing)"}; host=${new URL(request.url).host}; expected=${env.PACT_ORIGIN}]`,
       diagnostic: {
         receivedOrigin: origin || null,
         receivedReferer: request.headers.get("referer"),
