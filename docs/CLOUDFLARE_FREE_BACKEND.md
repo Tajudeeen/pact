@@ -17,10 +17,10 @@ The API is deployed with D1 binding `DB` and these variables:
 - `PACT_ORIGIN`: exact Vercel frontend origin.
 - `PACT_ACCESS_SELLER_ID`: seller identifier.
 - `PACT_ACCESS_RESOURCE_URL`: canonical HTTPS resource URL.
-- `CONCORDIUM_AGENT_REGISTRY_INDEX`: trusted testnet CIS-8004 contract index. Confirm from the deployed testnet registry before setting.
-- `CONCORDIUM_AGENT_REGISTRY_SUBINDEX`: trusted testnet CIS-8004 subindex, normally 0 only after confirming the contract.
+- `CONCORDIUM_AGENT_REGISTRY_INDEX`: `12802`, the testnet CIS-8004 registry index returned by the official registry `contract_info` tool.
+- `CONCORDIUM_AGENT_REGISTRY_SUBINDEX`: `0`.
 
-The Worker checks the CIS-2 token's embedded contract index and subindex against this trusted configuration, then requires the registry service's badge and Agent Card integrity checks to pass. Do not copy the mainnet registry index into testnet settings without confirmation.
+The Worker checks the CIS-2 token's embedded contract index and subindex against this trusted configuration, then requires an active on-chain record, a valid badge, owner and network consistency, a fetched Agent Card whose hash matches the on-chain metadata hash, and a registered `agentWallet`. Warning-only legacy badge notices are retained without rejecting an otherwise valid badge. Do not copy the mainnet registry index into testnet settings without confirmation.
 
 ## Data safety
 
