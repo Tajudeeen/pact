@@ -256,7 +256,16 @@ function accessMessage(context) {
 
 async function issueChallenge(request, env, origin) {
   if (origin !== env.PACT_ORIGIN)
-    return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
+    return json({
+      code: "ORIGIN_REJECTED",
+      message: "Request origin is not allowed.",
+      diagnostic: {
+        receivedOrigin: origin || null,
+        receivedReferer: request.headers.get("referer"),
+        receivedHost: new URL(request.url).host,
+        expectedOrigin: env.PACT_ORIGIN,
+      },
+    }, 403, origin);
 
   if (!env.DB || !env.PACT_ACCESS_SELLER_ID || !env.PACT_ACCESS_RESOURCE_URL)
     return json({ code: "BACKEND_NOT_CONFIGURED", message: "Pact Access configuration is incomplete." }, 503, origin);
