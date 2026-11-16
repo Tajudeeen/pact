@@ -108,6 +108,9 @@ function isAllowedAdmin(request: Request, env: Env): boolean {
 }
 
 function createSettlementRuntime(env: Env, requestId: string) {
+  const registryBeforePayment = await ensureCurrentRegistryBinding(env, record);
+  if (registryBeforePayment) return registryBeforePayment;
+
   const config = getPaymentConfig(env);
   if (!config.enabled) {
     throw new Error("Concordium x402 facilitator is not configured.");
@@ -557,6 +560,91 @@ async function reconcilePending(
   }
 }
 
+async function ensureCurrentRegistryBinding(
+  env: Env,
+  record: any,
+): Promise<Response | null> {
+  const registryUrl =
+    "https://pact-access.vercel.app/api/access/registry/" +
+    encodeURIComponent(record.buyer_agent_id);
+
+  let response: Response;
+  try {
+    response = await fetch(registryUrl, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return json({
+      code: "REGISTRY_UNAVAILABLE",
+      message: "Pact could not refresh the current CIS-8004 owner and agentWallet. No payment was started. Retry this same request id.",
+    }, 503);
+  }
+
+  if (response.status === 503 || response.status >= 500) {
+    return json({
+      code: "REGISTRY_UNAVAILABLE",
+      message: "Concordium Agent Registry is temporarily unavailable. No payment was started. Retry this same request id.",
+    }, 503);
+  }
+
+  let binding: any;
+  try {
+    binding = await response.json();
+  } catch {
+    return json({
+      code: "REGISTRY_RESPONSE_INVALID",
+      message: "Pact could not parse the current Agent Registry response. No payment was started.",
+    }, 503);
+  }
+
+  const matches =
+    response.status === 200 &&
+    binding?.status === "verified" &&
+    binding?.tokenAddress === record.buyer_agent_id &&
+    binding?.network === NETWORK &&
+    binding?.ownerAccount === record.owner_account &&
+    binding?.payerAccount === record.payer_account;
+
+  if (matches) return null;
+
+  const now = new Date().toISOString();
+  try {
+    const result = await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE pact_access_requests SET state = 'blocked' " +
+        "WHERE request_id = ? AND state = 'proof_verified' " +
+        "AND payment_reference IS NULL",
+      ).bind(record.request_id),
+      env.DB.prepare(
+        "INSERT INTO pact_access_audit " +
+        "(request_id, state, at, reason_code, payment_reference) " +
+        "SELECT ?, 'blocked', ?, 'registry_binding_changed', NULL " +
+        "WHERE changes() = 1",
+      ).bind(record.request_id, now),
+    ]);
+
+    if (result[0]?.meta?.changes !== 1) {
+      return json({
+        code: "REGISTRY_BINDING_STATE_CONFLICT",
+        message: "Pact could not safely lock the access request after a registry change.",
+      }, 409);
+    }
+  } catch {
+    return json({
+      code: "REGISTRY_AUDIT_FAILED",
+      message: "Pact could not record the changed registry binding. No payment was started.",
+    }, 503);
+  }
+
+  return json({
+    code: "REGISTRY_BINDING_CHANGED",
+    message: "The CIS-8004 owner or agentWallet changed after the challenge. This request is blocked. Start again with the current registry binding.",
+  }, 403);
+}
+
 async function handleResource(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET") {
     return json({
@@ -695,6 +783,9 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
       message: "The signed payment requirements do not match Pact's current price and payee.",
     }, 402);
   }
+
+  const registryBeforeSettlement = await ensureCurrentRegistryBinding(env, record);
+  if (registryBeforeSettlement) return registryBeforeSettlement;
 
   let runtime;
   try {
