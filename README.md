@@ -31,7 +31,7 @@ Pact has a working free-tier access and owner-proof path. The complete x402 paym
 - Owner signatures are verified against fresh Concordium testnet account credentials and their account/key thresholds. The copied agent handoff contains the verified request id, not the raw signature.
 - Production negative testing confirmed that an invalid signature returns HTTP 401 and is recorded as blocked in D1.
 - The dedicated x402 facilitator source is in `cloudflare/facilitator-worker/`. Its TypeScript check and Wrangler bundle pass. The bundle is about 1.13 MiB and is configured for the Workers Free CPU budget.
-- The facilitator URL currently runs a fail-closed placeholder. It reports `x402: not-deployed`, has payment configuration disabled, and returns HTTP 503 for protected resource requests. The full bundle is not deployed because the GitHub repository is missing the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets.
+- The facilitator URL currently runs a fail-closed placeholder. It reports `x402: not-deployed`, has payment configuration disabled, and returns HTTP 503 for protected resource requests. The full bundle is not deployed because the GitHub repository is missing the `CLOUDFLARE_API_TOKEN` Actions secret. The Cloudflare account ID is already embedded in the workflow.
 - The sponsor account, seller payout account, price, sponsor private key, and protected-resource admin key remain unset. No testnet payment or real resource delivery has occurred.
 - The public testnet agent badges inspected so far fail the official Agent Registry verifier. A valid badge, owner proof, testnet payment transaction, CCDExplorer link and end-to-end demo are still required.
 
