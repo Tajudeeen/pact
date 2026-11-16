@@ -643,15 +643,16 @@ async function verifyOwnerProof(request, env, origin) {
     return rejectOwnerProof(env, body.requestId, "invalid_signature", origin, 401);
 
   const verifiedAt = new Date().toISOString();
+  const accessExpiresAt = new Date(Date.now() + 12 * 60_000).toISOString();
   let results;
   try {
     results = await env.DB.batch([
       env.DB.prepare(
         `UPDATE pact_access_requests
-         SET state = 'proof_verified', challenge_consumed_at = ?
+         SET state = 'proof_verified', challenge_consumed_at = ?, expires_at = ?
          WHERE request_id = ? AND state = 'proof_required'
            AND challenge_consumed_at IS NULL AND expires_at > ?`,
-      ).bind(verifiedAt, body.requestId, verifiedAt),
+      ).bind(verifiedAt, accessExpiresAt, body.requestId, verifiedAt),
       env.DB.prepare(
         `INSERT INTO pact_access_audit (request_id, state, at, reason_code)
          SELECT ?, 'proof_verified', ?, 'concordium_account_signature'
@@ -669,6 +670,7 @@ async function verifyOwnerProof(request, env, origin) {
     status: "verified",
     verifiedAccount: row.owner_account,
     verifiedAt,
+    expiresAt: accessExpiresAt,
     policyId: POLICY_ID,
   }, 200, origin);
 }
