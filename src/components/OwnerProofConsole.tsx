@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, Copy, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
 import { api, browserPreview } from "../api";
 import { createConcordiumOwnerProof } from "../access/concordium-wallet";
@@ -25,8 +25,14 @@ export function OwnerProofConsole() {
   const [busy, setBusy] = useState<"challenge" | "sign" | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const validAgent = useMemo(() => agentIdPattern.test(agentId.trim()), [agentId]);
-  const expired = challenge ? Date.parse(challenge.expiresAt) <= Date.now() : false;
+  const remainingMs = challenge ? Math.max(0, Date.parse(challenge.expiresAt) - clock) : 0;\n  const expired = Boolean(challenge && remainingMs === 0);\n  const remainingLabel = `${Math.floor(remainingMs / 60_000)}:${String(Math.floor((remainingMs % 60_000) / 1000)).padStart(2, "0")}`;
 
   const issueChallenge = async () => {
     setBusy("challenge");
@@ -132,7 +138,7 @@ export function OwnerProofConsole() {
             {!validAgent && agentId.length > 0 && <p className="access-console-inline-error">Enter a valid base58 CIS-8004 token address.</p>}
             {challenge && (
               <div className="access-challenge-card">
-                <div className="access-challenge-heading"><span>CHALLENGE ISSUED</span><span>{expired ? "EXPIRED" : `EXPIRES ${new Date(challenge.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}</span></div>
+                <div className="access-challenge-heading"><span>CHALLENGE ISSUED</span><span>{expired ? "EXPIRED" : `EXPIRES IN ${remainingLabel}`}</span></div>
                 <div className="access-challenge-row"><small>REQUEST ID</small><code>{challenge.requestId}</code></div>
                 <div className="access-challenge-row"><small>POLICY</small><code>{challenge.policyId}</code></div>
                 <p className="access-console-help">The message binds your owner signature to this request, agent, seller, resource and payment wallet.</p>
