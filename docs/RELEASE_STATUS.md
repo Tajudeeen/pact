@@ -1,30 +1,42 @@
-# Pact release qualification, October 30, 2026
+# Pact Access release status
 
-## Verified in this release
+Last checked: November 16, 2026
 
-- Merged code is in `main` at commit `9c29a1e94acd7f5c38aafdd794976d25aea8cdf7` before this release workflow addition.
-- GitHub Actions reported success for TypeScript, tests and application build on the feature PR.
-- Previous Worker deployment observed via Cloudflare API: **October 24, 2026**. This is older than the code changes.
-- Latest Worker code **has not been deployed or tested in the real browser** as of this document.
+## Production deployment
 
-## Deploy the newest main branch
+- Frontend: https://pact-access.vercel.app
+- Main access Worker: pact-access-api on Cloudflare Workers Free
+- Facilitator Worker URL: https://pact-access-facilitator.tajudeenisah02.workers.dev
+- Database: Cloudflare D1, pact-access
+- Network: Concordium testnet
+- Registry: CIS-8004 contract 12802,0
 
-A manual GitHub Actions workflow is supplied at **Actions → Pact Cloudflare production release → Run workflow**. It deliberately requires the operator to enter `DEPLOY_PACT_TESTNET` and the following GitHub Actions secrets:
+The main access Worker is deployed. The facilitator URL is a small fail-closed placeholder. The full x402 facilitator implementation has not been deployed yet.
 
-- `CLOUDFLARE_API_TOKEN`: scoped to the appropriate account's Workers deployments.
-- `CLOUDFLARE_ACCOUNT_ID`: the correct existing Cloudflare account.
+## Verified
 
-No token or private wallet key should be committed to GitHub. Run the workflow from `main`. It checks dependencies, types, tests and Worker build before using `wrangler deploy --env production`. The existing `pact-testnet` Worker, Durable Object binding names and migrations must remain intact. Confirm the deployed owner and operator address after deployment.
+- Main API health route reports status ok and storage ready.
+- Concordium testnet account info is retrieved through gRPC-Web.
+- The Worker verifies Ed25519 signatures against current account credential keys and account/key thresholds.
+- A synthetic invalid-signature production test returned HTTP 401 and produced a D1 audit row with blocked / invalid_signature. The signature bytes were not persisted.
+- The live registry re-check endpoint rejects the inspected invalid testnet badge with HTTP 403.
+- The owner challenge lasts 90 seconds. After a valid proof, the payment window lasts 12 minutes.
+- The main repository quality suite passed install, TypeScript, tests, and production build on the last completed run.
+- The facilitator package passed strict TypeScript and Wrangler bundling. The bundle is approximately 1.13 MiB uncompressed.
+- The live payment health endpoint reports x402: not-deployed and paymentsEnabled: false. The resource endpoint returns HTTP 503.
 
-`node scripts/check-live.mjs` performs only GET requests against `/api/health` and `/api/network`. This is an API smoke check, **not** a user-facing browser test or trading qualification.
+Build evidence:
+- Main quality run: https://github.com/Tajudeeen/pact/actions/runs/43872281570
+- Facilitator build run: https://github.com/Tajudeeen/pact/actions/runs/43872490418
 
-## Still unverified
+## Still blocked
 
-- Mobile wallet login and in-browser approval flow, including Android Chrome wallet browser and iOS Safari.
-- Dedicated operator's current address, permissions, STT gas and owner's paper USDso margin.
-- Real funded entry, decoded matching fill, close, independent flat-position observation and full chain receipt.
-- Actual DoraHacks whitelist acceptance.
-- Required two X posts and authentic links.
-- Real screen-recorded execution video.
+- The GitHub repository does not yet contain the CLOUDFLARE_API_TOKEN Actions secret, so the final facilitator deployment step is skipped.
+- Seller payout account, fee sponsor account, sponsor private key, price, and resource-admin secret are unset.
+- The testnet badges inspected so far fail the official verifier. A valid active badge and Agent Card are still needed.
+- No real owner wallet proof, CCD payment transaction, CCDScan link, or protected resource delivery has been demonstrated.
+- Workers Free CPU usage for the actual x402 settlement path has not been measured with a live transaction. The 10 ms CPU cap is configured, but a real settlement must prove the implementation fits.
 
-For a trade, explicitly approve the currently shown parameters in the Pact UI. Never fund or trade through a new operator address without checking it against the current Account page. Mainnet remains disabled.
+## Release gate
+
+Pact is not ready for a live paid-resource release or final hackathon demo. Keep the facilitator fail-closed until a valid agent badge, funded sponsor, seller payout account, real buyer agent, finalized payment, and exact resource delivery are verified end to end.
