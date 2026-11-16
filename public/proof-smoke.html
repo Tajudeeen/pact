@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pact owner proof smoke test</title>
+  <style>
+    body { background:#0e1217; color:#fff; font:14px system-ui,sans-serif; margin:0; padding:48px 20px; }
+    main { max-width:760px; margin:0 auto; }
+    pre { background:#14191f; border:1px solid #2d323a; border-radius:8px; padding:18px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>pact owner proof smoke test</h1>
+    <p>this page submits one synthetic all-zero signature for a temporary request. it cannot unlock a resource or send a payment.</p>
+    <pre id="result">submitting test proof…</pre>
+  </main>
+  <script>
+    (async () => {
+      const requestId = "11111111-1111-4111-8111-111111111111";
+      const account = "4AuT5RRmBwcdkLMA6iVjxTDb1FQmxwAh3wHBS22mggWL8xH6s3";
+      const proof = btoa(JSON.stringify({
+        account,
+        signature: { 0: { 0: "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" } }
+      })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      try {
+        const response = await fetch("/api/access/proofs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, proof })
+        });
+        const body = await response.json();
+        document.querySelector("#result").textContent = JSON.stringify({
+          status: response.status,
+          body
+        }, null, 2);
+      } catch (error) {
+        document.querySelector("#result").textContent = String(error);
+      }
+    })();
+  </script>
+</body>
+</html>
