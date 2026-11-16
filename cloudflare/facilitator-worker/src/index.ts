@@ -582,12 +582,17 @@ async function handleResource(request: Request, env: Env): Promise<Response> {
     }, 404);
   }
 
-  const requestExpiresAt = Date.parse(record.expires_at);
-  if (!Number.isFinite(requestExpiresAt) || requestExpiresAt <= Date.now()) {
-    return json({
-      code: "ACCESS_REQUEST_EXPIRED",
-      message: "The proof-gated access request expired. Request a fresh challenge.",
-    }, 410);
+  // The 12-minute access window gates the start of a payment only.
+  // Once a payment is pending, paid, or delivered, a late retry must still
+  // be allowed to reconcile the same transaction and recover the resource.
+  if (record.state === "proof_verified") {
+    const requestExpiresAt = Date.parse(record.expires_at);
+    if (!Number.isFinite(requestExpiresAt) || requestExpiresAt <= Date.now()) {
+      return json({
+        code: "ACCESS_REQUEST_EXPIRED",
+        message: "The proof-gated access window expired before payment. Request fresh owner authorization.",
+      }, 410);
+    }
   }
 
   if (record.state === "delivered") {
