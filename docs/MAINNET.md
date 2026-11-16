@@ -1,3 +1,5 @@
+> archived: this document describes the previous Somnia/dreamDEX perpetual-trading product. it is preserved as historical project context only and must not be used to operate Pact Access. the current product is the Concordium proof-gated access gateway. start with docs/PACT_ACCESS_SPEC.md, docs/INTEGRATION_DECISIONS.md, and docs/CLOUDFLARE_FREE_BACKEND.md.
+
 # Execution qualification and mainnet release
 
 Pact's current release is Tokyo testnet only, chain 50383. The dreamDEX perps documentation checked on 24 October 2026 states that perps have no mainnet markets yet: https://app.testnet.dreamdex.io/docs/trading/perps-testnet. Somnia mainnet existing does not establish a mainnet perps deployment.
