@@ -16,7 +16,7 @@ export function Landing() {
     <div className="access-landing" id="top">
       <BrandSplash />
       <header className="access-nav">
-        <Link to="/" aria-label="Pact home" className="access-brand"><span className="access-brand-symbol">P</span><span>PACT<span className="access-brand-dot">.</span></span></Link>
+        <Link to="/" aria-label="Pact home" className="access-brand"><img className="access-brand-image" src="/pact-mark.svg" alt="" /><span>pact<span className="access-brand-dot">.</span></span></Link>
         <nav><a href="#flow">How it works</a><a href="#security">Security</a><a href="#scope">Scope</a></nav>
         <a className="access-nav-cta" href="#flow">Explore the flow <ArrowUpRight size={15}/></a>
       </header>
