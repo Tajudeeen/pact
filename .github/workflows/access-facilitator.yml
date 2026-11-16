@@ -1,0 +1,48 @@
+name: Pact Access facilitator Worker build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/facilitator-worker/**'
+      - '.github/workflows/access-facilitator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: pact-access-facilitator-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cloudflare/facilitator-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Worker dependencies
+        run: npm install --no-audit --no-fund
+      - name: Bundle Worker
+        run: npx wrangler deploy --dry-run --outdir .out --config wrangler.jsonc
+      - name: Verify bundle output
+        run: |
+          test -f .out/index.js || { echo "Worker bundle not found"; exit 1; }
+          echo "Worker bundle size:"
+          wc -c .out/index.js
+          echo "Worker bundle imports:"
+          grep -nE 'node:|from "fs"|from "path"|from "crypto"' .out/index.js | head -30 || true
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-access-facilitator-worker
+          path: cloudflare/facilitator-worker/.out/
+          if-no-files-found: error
+          retention-days: 3
