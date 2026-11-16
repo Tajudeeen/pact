@@ -103,6 +103,21 @@ A request with no proof, wrong payer, invalid x402 signature, failed or mismatch
 Use Workers Free and D1 only. Keep CPU at 10 ms/request, resource content at 256 KiB, and request/D1 usage inside free allowances. Do not add Containers, paid Workers, paid storage or Durable Objects unless the plan changes. Review Cloudflare's live limits before increasing throughput:
 `https://developers.cloudflare.com/workers/platform/limits/`
 
+## Buyer-agent demo
+
+The isolated package also includes a buyer-agent CLI at `scripts/pact-buyer-agent.ts`. It uses the official Concordium x402 client and the agent's registered `agentWallet` key. Run it only after the full facilitator has been deployed, a valid owner proof has been verified, and a protected resource has been uploaded.
+
+```powershell
+cd cloudflare/facilitator-worker
+$env:PACT_ACCESS_REQUEST_ID = "<verified-request-id>"
+$env:PACT_BUYER_AGENT_WALLET_ADDRESS = "<registered-agentWallet>"
+$env:PACT_BUYER_AGENT_WALLET_PRIVATE_KEY = "<agentWallet-private-key>"
+npm install
+npm run demo:buyer
+```
+
+Keep the private key only in the local shell or a secure secret manager. Never put it in `.env.example`, source control, browser code or chat. HTTP 202 means the transaction may already be broadcast. Reuse the same request id for reconciliation and do not create a second payment.
+
 ## Local commands
 
 ```powershell
