@@ -29,5 +29,8 @@
     "PACT_ACCESS_PRICE_ATOMIC": "",
     "PACT_SELLER_PAY_TO": "",
     "CCD_FACILITATOR_ADDRESS": ""
+  },
+  "limits": {
+    "cpu_ms": 10
   }
 }
