@@ -62,8 +62,14 @@ The workflow is `.github/workflows/access-facilitator.yml`. Once both GitHub Act
 The following are deliberately blank. No payment can be made until all of them are configured.
 
 GitHub repository Actions secrets:
-- `CLOUDFLARE_API_TOKEN`: Cloudflare API token with Workers Scripts edit and D1 edit permissions.
-- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account identifier.
+- `CLOUDFLARE_API_TOKEN`: create a custom Cloudflare API token scoped to this account with only `Workers Scripts Edit` and `D1 Edit`. The token is needed to create/update the facilitator Worker and apply its D1 migration.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account identifier. The workflow reads it as a secret too.
+
+Create the token in [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens). Under Account Resources, select only the Pact Cloudflare account. Under Account Permissions, add `Workers Scripts Edit` and `D1 Edit`. Do not add billing, zone, R2, Containers, or other permissions.
+
+Then open the GitHub repository Settings, go to Secrets and variables, then Actions, and add both names exactly as shown. Do not paste the token into a commit, issue, pull request, chat, or workflow file.
+
+To deploy after adding both secrets, open the GitHub Actions workflow named `Pact Access facilitator Worker build and deploy`, choose Run workflow, and enter `DEPLOY_PACT_ACCESS_FACILITATOR` for the confirmation input. The workflow performs the build, applies the resource D1 migration, deploys the facilitator with payment configuration still blank, and checks that the live health endpoint reports payments disabled.
 
 Cloudflare Worker variables in `cloudflare/facilitator-worker/wrangler.jsonc`:
 - `PACT_ACCESS_PRICE_ATOMIC`: the resource price in micro-CCD atomic units.
