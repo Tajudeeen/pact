@@ -1,3 +1,5 @@
+> archived: this document describes the previous Somnia/dreamDEX perpetual-trading product. it is preserved as historical project context only and must not be used to operate Pact Access. the current product is the Concordium proof-gated access gateway. start with docs/PACT_ACCESS_SPEC.md, docs/INTEGRATION_DECISIONS.md, and docs/CLOUDFLARE_FREE_BACKEND.md.
+
 # Cloudflare testnet runbook
 
 Pact runs at https://pact-testnet.tajudeenowoeteniyan.workers.dev. The app and API share the same origin. Cloudflare Workers serves the frontend and a SQLite-backed `PactLane` Durable Object stores the session, approvals, risk reservations, signed actions and dedicated operator.
