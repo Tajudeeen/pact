@@ -809,7 +809,8 @@ export default {
           runtime: "cloudflare-workers-free",
           database: "d1",
           challengeIssuance: "configured",
-          ownerSignatureVerification: "configured",\n          accountInfoRpc: "concordium-testnet-grpc-web",
+          ownerSignatureVerification: "configured",
+          accountInfoRpc: "concordium-testnet-grpc-web",
           payments: "disabled",
           resourceDelivery: "disabled",
         });
