@@ -76,16 +76,9 @@ describe("Pact buyer agent payment client", () => {
   });
 
   it("builds the request-bound Pact headers for the buyer agent", () => {
-    expect(pactBuyerHeaders({
-      requestId: "request-1",
-      ownerProofHeader: "proof-header",
-    })).toEqual({
+    expect(pactBuyerHeaders({ requestId: "request-1" })).toEqual({
       "x-pact-access-request": "request-1",
-      "x-pact-owner-proof": "proof-header",
     });
-    expect(() => pactBuyerHeaders({
-      requestId: "bad request",
-      ownerProofHeader: "proof",
-    })).toThrow("request id");
+    expect(() => pactBuyerHeaders({ requestId: "bad request" })).toThrow("request id");
   });
 });
