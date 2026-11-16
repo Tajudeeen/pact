@@ -21,7 +21,7 @@
     "PACT_ORIGIN": "https://pact-access.vercel.app",
     "PACT_ACCESS_SELLER_ID": "pact-access-demo",
     "PACT_ACCESS_RESOURCE_URL": "https://pact-access.vercel.app/api/access/resource",
-    "CONCORDIUM_AGENT_REGISTRY_INDEX": "",
+    "CONCORDIUM_AGENT_REGISTRY_INDEX": "12802",
     "CONCORDIUM_AGENT_REGISTRY_SUBINDEX": "0"
   }
 }
