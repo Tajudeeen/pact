@@ -5,7 +5,7 @@
 Pact Access has two distinct surfaces:
 
 - Public website at `/`: product explanation, trust model, integration documentation, and entry points.
-- Authenticated-style workspace at `/app/*`: operational views for registry lookups, owner verification, payment readiness, and audit evidence.
+- Operational workspace at `/app/*`: operational views for registry lookups, owner verification, payment readiness, and audit evidence.
 
 The workspace must not imply authentication or seller tenancy until those capabilities exist. The first release is a single-operator testnet workspace.
 
@@ -29,8 +29,9 @@ Unknown routes inside the workspace render a workspace-level not-found page. The
 - `src/App.tsx` owns the route tree and public/workspace separation.
 - `src/layouts/WorkspaceLayout.tsx` owns workspace navigation, responsive shell, active route state, and page chrome.
 - `src/pages/workspace/*` owns route-level screens.
-- `src/components/OwnerProofConsole.tsx` remains the owner-proof interaction and is composed by the verification route.
-- `src/api.ts` remains the same-origin API transport. Pages call only documented endpoints.
+- `src/components/OwnerProofConsole.tsx` owns the owner-proof interaction and uses only the dedicated Pact Access transport. The verification route composes it.
+- `src/access/api.ts` is the dedicated same-origin Pact Access transport. It always calls the Vercel `/api/*` rewrites, including in preview builds, and never enters the legacy browser-local trading simulator.
+- `src/api.ts` remains the legacy trading application transport and preview adapter. Pact Access screens must not import it.
 - Existing Somnia market/session state is legacy and must not be mounted in the Pact Access runtime.
 
 ## Backend trust boundaries
