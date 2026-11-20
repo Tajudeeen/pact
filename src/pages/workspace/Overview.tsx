@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, ArrowRight, Bot, CreditCard, RefreshCw, ShieldCheck } from "lucide-react";
 import { Link } from "react-router";
-import { api } from "../../api";
+import { accessApi } from "../../access/api";
 
 type Probe = { loading: boolean; ok: boolean | null; detail: string; checkedAt: string | null };
 
@@ -11,8 +11,8 @@ function useProbe(path: string) {
   useEffect(() => {
     const controller = new AbortController();
     setProbe((current) => ({ ...current, loading: true, detail: "Checking service…" }));
-    api<Record<string, unknown>>(path, { signal: controller.signal })
-      .then((result) => setProbe({ loading: false, ok: true, detail: typeof result.status === "string" ? result.status : "Endpoint responded successfully", checkedAt: new Date().toISOString() }))
+    accessApi<Record<string, unknown>>(path, { signal: controller.signal })
+      .then((result) => setProbe({ loading: false, ok: true, detail: path === "/health" ? (result.storage === "ready" ? "D1 storage ready" : String(result.status ?? "API responded")) : String(result.payments ?? result.x402 ?? "Facilitator endpoint responded"), checkedAt: new Date().toISOString() }))
       .catch((error: Error) => {
         if (!controller.signal.aborted) setProbe({ loading: false, ok: false, detail: error.message || "Service check failed", checkedAt: new Date().toISOString() });
       });
