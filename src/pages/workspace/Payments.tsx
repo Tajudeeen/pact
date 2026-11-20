@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CreditCard, RefreshCw, ShieldAlert } from "lucide-react";
-import { api } from "../../api";
+import { accessApi } from "../../access/api";
 
 type PaymentHealth = Record<string, unknown>;
 
@@ -13,14 +13,14 @@ export function Payments() {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    api<PaymentHealth>("/access/payment-health", { signal: controller.signal })
+    accessApi<PaymentHealth>("/access/payment-health", { signal: controller.signal })
       .then(setHealth)
       .catch((cause: Error) => { if (!controller.signal.aborted) setError(cause.message || "Payment health check failed."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [revision]);
 
-  const enabled = health?.paymentsEnabled === true;
+  const configured = health?.facilitatorConfigured === true && health?.payments === "configured";
   return (
     <div className="workspace-page">
       <div className="workspace-page-heading"><div><div className="workspace-eyebrow">X402 · CCD SETTLEMENT</div><h1>Payments</h1><p>Inspect facilitator readiness. This page never submits or simulates a payment.</p></div><span className="workspace-readonly-pill">READ-ONLY STATUS</span></div>
@@ -29,9 +29,9 @@ export function Payments() {
         {loading && <p className="workspace-muted">Checking facilitator configuration…</p>}
         {error && <div className="workspace-inline-error" role="alert">{error}<button onClick={() => setRevision((value) => value + 1)}><RefreshCw size={13}/> Retry</button></div>}
         {!loading && !error && health && <>
-          <div className={enabled ? "workspace-payment-state is-enabled" : "workspace-payment-state is-disabled"}><i/>{enabled ? "Payments enabled" : "Payments disabled"}</div>
+          <div className={configured ? "workspace-payment-state is-enabled" : "workspace-payment-state is-disabled"}><i/>{configured ? "Facilitator configured" : "Payments disabled"}</div>
           <pre className="workspace-health-json">{JSON.stringify(health, null, 2)}</pre>
-          {!enabled && <div className="workspace-notice"><ShieldAlert size={17}/><p><strong>Settlement is locked.</strong> The facilitator must be deployed and configured, and a real finalized testnet transaction must be verified before resource delivery can be demonstrated.</p></div>}
+          {!configured && <div className="workspace-notice"><ShieldAlert size={17}/><p><strong>Settlement remains locked.</strong> The facilitator must be deployed and fully configured. A real finalized testnet transaction and protected-resource delivery still need independent verification.</p></div>}
         </>}
       </section>
     </div>
