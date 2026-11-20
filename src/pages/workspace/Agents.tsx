@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ArrowUpRight, Bot, LoaderCircle, Search, ShieldCheck } from "lucide-react";
+import { Bot, LoaderCircle, Search, ShieldCheck } from "lucide-react";
 import { api } from "../../api";
 
 const tokenPattern = /^[1-9A-HJ-NP-Za-km-z]{20,80}$/;
