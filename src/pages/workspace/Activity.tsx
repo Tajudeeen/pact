@@ -1,4 +1,4 @@
-import { Activity, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 
 export function ActivityPage() {
   return (
