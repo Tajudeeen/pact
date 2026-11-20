@@ -19,7 +19,7 @@ The workspace must not imply authentication or seller tenancy until those capabi
 | `/app/verification` | Request a challenge and verify the current owner signature | Main Worker challenge and proof endpoints |
 | `/app/payments` | Inspect x402 facilitator readiness and settlement availability | Facilitator payment-health endpoint |
 | `/app/activity` | Sanitized request and settlement audit trail | Future read-only audit API, not yet exposed |
-| `/app/settings` | Read-only network and registry configuration | Versioned app configuration |
+| `/app/settings` | Read-only network and registry configuration | Documented build-time configuration |
 
 Unknown routes inside the workspace render a workspace-level not-found page. They must not silently redirect to the marketing homepage.
 
