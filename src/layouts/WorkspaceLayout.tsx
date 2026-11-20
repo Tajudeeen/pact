@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowLeft, ArrowUpRight, Bot, CreditCard, LayoutDashboard, Menu, ShieldCheck, Settings, X } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router";
 
@@ -13,6 +13,21 @@ const navigation = [
 
 export function WorkspaceLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
 
   return (
     <div className="workspace">
@@ -22,7 +37,7 @@ export function WorkspaceLayout() {
             <img src="/pact-mark.svg" alt="" />
             <span>pact<span>.</span></span>
           </Link>
-          <button className="workspace-icon-button workspace-mobile-close" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18}/></button>
+          <button ref={closeRef} className="workspace-icon-button workspace-mobile-close" type="button" aria-label="Close navigation" onClick={() => { setMobileOpen(false); triggerRef.current?.focus(); }}><X size={18}/></button>
         </div>
         <div className="workspace-nav-label">WORKSPACE</div>
         <nav className="workspace-nav" aria-label="Workspace navigation">
@@ -42,7 +57,7 @@ export function WorkspaceLayout() {
 
       <div className="workspace-main">
         <header className="workspace-topbar">
-          <button className="workspace-icon-button workspace-mobile-trigger" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={19}/></button>
+          <button ref={triggerRef} className="workspace-icon-button workspace-mobile-trigger" type="button" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={19}/></button>
           <div className="workspace-breadcrumb"><span>PACT ACCESS</span><b>/</b><strong>WORKSPACE</strong></div>
           <div className="workspace-topbar-right"><span className="workspace-mode"><i/> TESTNET ENVIRONMENT</span><a href="https://github.com/Tajudeeen/pact" target="_blank" rel="noreferrer" aria-label="Pact source repository"><ArrowUpRight size={16}/></a></div>
         </header>

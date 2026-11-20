@@ -56,6 +56,21 @@ See [the Cloudflare Free backend runbook](docs/CLOUDFLARE_FREE_BACKEND.md) for d
 - A signature proves only control of the account that signed it. It does not prove extra identity attributes.
 - Test fixtures and simulations are labeled and never presented as live chain evidence.
 
+## Product site and operational workspace
+
+The frontend has two surfaces:
+
+- `/` — the public product site: what Pact is, its trust model, and integration docs.
+- `/app/*` — a route-based operational workspace (Overview, Agents, Verification, Payments, Activity, Settings). Direct visits and refreshes on nested routes are served by the Vercel SPA fallback.
+
+The workspace is read-only and single-operator. It does not claim authentication or seller tenancy. Pact Access screens use the dedicated same-origin transport in `src/access/api.ts`; the legacy browser-local trading transport in `src/api.ts` is not mounted in the Pact Access runtime. Service-health cards distinguish an endpoint that responds from a capability that is configured: a reachable but disabled facilitator reads "Not configured", never healthy. Payment health is readiness evidence, not a submitted or settled payment. The Activity route stays empty until an authorized sanitized audit API exists.
+
+See [the product architecture](docs/PRODUCT_ARCHITECTURE.md) for the route map, data-honesty rules, follow-on API contracts, and release gates.
+
+## Local QA
+
+`node scripts/qa-serve.mjs` serves the production build from `dist/` with an SPA fallback and deterministic mock API responses on port 8792. It is a local visual/mobile QA aid only — never deployed and never evidence of a live backend.
+
 ## Development
 
 the production frontend is served through Vercel. the main access API and a fail-closed facilitator placeholder run on Cloudflare Workers Free and share D1. the main Worker handles trusted registry checks, 90-second owner challenges, and server-side Concordium account-signature verification. a successful proof opens a 12-minute access window for x402 settlement.
