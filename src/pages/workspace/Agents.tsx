@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ArrowUpRight, Bot, LoaderCircle, Search, ShieldCheck } from "lucide-react";
 import { api } from "../../api";
 
@@ -10,7 +10,7 @@ export function Agents() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function lookup(event: React.FormEvent<HTMLFormElement>) {
+  async function lookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tokenPattern.test(token.trim())) return;
     setLoading(true);
