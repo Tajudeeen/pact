@@ -19,6 +19,10 @@
     {
       "source": "/api/access/:path*",
       "destination": "https://pact-access-api.tajudeenisah02.workers.dev/api/access/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
