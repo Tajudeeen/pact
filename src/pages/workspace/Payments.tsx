@@ -20,7 +20,10 @@ export function Payments() {
     return () => controller.abort();
   }, [revision]);
 
-  const configured = health?.facilitatorConfigured === true && health?.payments === "configured";
+  const configured =
+    health?.facilitatorConfigured === true &&
+    (health?.payments === "configured" || health?.paymentsEnabled === true) &&
+    health?.x402 !== "not-deployed";
   return (
     <div className="workspace-page">
       <div className="workspace-page-heading"><div><div className="workspace-eyebrow">X402 · CCD SETTLEMENT</div><h1>Payments</h1><p>Inspect facilitator readiness. This page never submits or simulates a payment.</p></div><span className="workspace-readonly-pill">READ-ONLY STATUS</span></div>

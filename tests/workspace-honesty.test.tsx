@@ -21,7 +21,15 @@ function mockFetchWith(responses: Record<string, unknown>) {
 describe("Workspace health honesty", () => {
   it("shows the disabled facilitator as not configured instead of healthy", async () => {
     mockFetchWith({
-      "/health": { status: "ok", storage: "ready" },
+      "/health": {
+        status: "ok",
+        storage: "ready",
+        challengeIssuance: "configured",
+        ownerSignatureVerification: "configured",
+        accountInfoRpc: "concordium-testnet-grpc-web",
+        payments: "disabled",
+        resourceDelivery: "disabled",
+      },
       "/access/payment-health": {
         facilitatorConfigured: false,
         payments: "disabled_until_testnet_configuration",
@@ -34,7 +42,7 @@ describe("Workspace health honesty", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText("D1 storage ready")).toBeDefined(),
+      expect(screen.getByText(/Challenge, owner signature and account RPC configured/)).toBeDefined(),
     );
     expect(screen.getByText("Payments disabled — facilitator awaits testnet configuration")).toBeDefined();
     expect(screen.getAllByText("Not configured")).toHaveLength(1);
@@ -62,8 +70,49 @@ describe("Workspace health honesty", () => {
     await waitFor(() =>
       expect(screen.getByText(/readiness only, no payment submitted/)).toBeDefined(),
     );
-    expect(screen.getAllByText("Ready")).toHaveLength(2);
+    expect(screen.getAllByText("Ready")).toHaveLength(1);
     expect(screen.queryByText(/payment successful/i)).toBeNull();
+  });
+
+  it("surfaces the real production health fields and the live payment-health shape", async () => {
+    mockFetchWith({
+      "/health": {
+        status: "ok",
+        storage: "ready",
+        runtime: "cloudflare-workers-free",
+        database: "d1",
+        challengeIssuance: "configured",
+        ownerSignatureVerification: "configured",
+        accountInfoRpc: "concordium-testnet-grpc-web",
+        payments: "disabled",
+        resourceDelivery: "disabled",
+      },
+      "/access/payment-health": {
+        runtime: "cloudflare-workers-free",
+        database: "d1-ready",
+        resourceCount: 0,
+        network: "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+        x402: "not-deployed",
+        facilitatorConfigured: false,
+        paymentsEnabled: false,
+        resourceDelivery: "disabled",
+        reason: "The final x402 facilitator bundle has not been deployed yet.",
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={["/app/overview"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Payments not deployed — facilitator is fail-closed/)).toBeDefined(),
+    );
+    expect(screen.getByText(/Challenge, owner signature and account RPC configured/)).toBeDefined();
+    expect(screen.getByText("accountInfoRpc: concordium-testnet-grpc-web")).toBeDefined();
+    expect(screen.getByText("x402: not-deployed")).toBeDefined();
+    expect(screen.getByText("paymentsEnabled: false")).toBeDefined();
+    expect(screen.getByText(/final x402 facilitator bundle has not been deployed/)).toBeDefined();
   });
 });
 
