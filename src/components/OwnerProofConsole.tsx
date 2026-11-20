@@ -183,7 +183,7 @@ export function OwnerProofConsole() {
                   <button className="access-console-button secondary" onClick={() => void signChallenge()} disabled={expired || busy !== null}>
                     {busy === "sign" ? <><LoaderCircle size={15} className="access-spin"/> Waiting for Concordium wallet</> : <>Connect wallet and sign <Fingerprint size={15}/></>}
                   </button>
-        
+                )}
                 {proof && (
                   <button className="access-console-button" onClick={() => void copyHandoff()} disabled={accessExpired}>
                     {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
