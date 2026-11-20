@@ -8,6 +8,7 @@ import { Agents } from "./pages/workspace/Agents";
 import { Verification } from "./pages/workspace/Verification";
 import { Payments } from "./pages/workspace/Payments";
 import { ActivityPage } from "./pages/workspace/Activity";
+import { Evidence } from "./pages/workspace/Evidence";
 import { Settings } from "./pages/workspace/Settings";
 
 function WorkspaceNotFound() {
@@ -39,6 +40,7 @@ export function App() {
         <Route path="verification" element={<Verification />} />
         <Route path="payments" element={<Payments />} />
         <Route path="activity" element={<ActivityPage />} />
+        <Route path="evidence" element={<Evidence />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<WorkspaceNotFound />} />
       </Route>

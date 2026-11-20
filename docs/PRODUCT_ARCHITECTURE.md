@@ -20,6 +20,7 @@ The workspace must not imply authentication or seller tenancy until those capabi
 | `/app/payments` | Inspect x402 facilitator readiness and settlement availability | Facilitator payment-health endpoint |
 | `/app/activity` | Sanitized request and settlement audit trail | Future read-only audit API, not yet exposed |
 | `/app/settings` | Read-only network and registry configuration | Documented build-time configuration |
+| `/app/evidence` | Judge re-verification: copyable commands, verified claims, honest gaps | Live endpoints + public repository |
 
 Unknown routes inside the workspace render a workspace-level not-found page. They must not silently redirect to the marketing homepage.
 
@@ -28,7 +29,7 @@ Unknown routes inside the workspace render a workspace-level not-found page. The
 - `src/main.tsx` owns only router setup, global styles, and the root render.
 - `src/App.tsx` owns the route tree and public/workspace separation.
 - `src/layouts/WorkspaceLayout.tsx` owns workspace navigation, responsive shell, active route state, and page chrome.
-- `src/pages/workspace/*` owns route-level screens.
+- `src/pages/workspace/*` owns route-level screens. The evidence screen lists exact re-verification commands and must never present a simulated success as proof.
 - `src/components/OwnerProofConsole.tsx` owns the owner-proof interaction and uses only the dedicated Pact Access transport. The verification route composes it.
 - `src/access/api.ts` is the dedicated same-origin Pact Access transport. It always calls the Vercel `/api/*` rewrites, including in preview builds, and never enters the legacy browser-local trading simulator.
 - `src/api.ts` remains the legacy trading application transport and preview adapter. Pact Access screens must not import it.

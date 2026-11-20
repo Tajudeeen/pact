@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, ArrowUpRight, Bot, CreditCard, LayoutDashboard, Menu, ShieldCheck, Settings, X } from "lucide-react";
+import { Activity, ArrowLeft, ArrowUpRight, Bot, CreditCard, FileCheck2, LayoutDashboard, Menu, ShieldCheck, Settings, X } from "lucide-react";
 import { Link, NavLink, Outlet } from "react-router";
 
 const navigation = [
@@ -8,6 +8,7 @@ const navigation = [
   { to: "/app/verification", label: "Verification", icon: ShieldCheck },
   { to: "/app/payments", label: "Payments", icon: CreditCard },
   { to: "/app/activity", label: "Activity", icon: Activity },
+  { to: "/app/evidence", label: "Evidence", icon: FileCheck2 },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 

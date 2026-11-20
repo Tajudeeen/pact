@@ -89,6 +89,22 @@
 .workspace-scrim{display:none}
 .workspace-spin{animation:workspace-spin 1s linear infinite}
 @keyframes workspace-spin{to{transform:rotate(360deg)}}
+.workspace-command-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.workspace-command-card{gap:12px;align-content:start}
+.workspace-command-head{display:flex;align-items:center;gap:9px}
+.workspace-command-head>span{display:grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#edf3ff;color:var(--ws-blue)}
+.workspace-command-head strong{font-size:12px;flex:1}
+.workspace-command-head button{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--ws-line);border-radius:6px;background:#fff;color:#647085;cursor:pointer}
+.workspace-command-card code{display:block;padding:11px 12px;border-radius:6px;background:#f7f9fc;border:1px solid #e9edf4;color:#2f5b9e;font:10px/1.6 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}
+.workspace-command-card p{font-size:10px;line-height:1.7;color:var(--ws-muted);margin:0}
+.workspace-evidence-table{display:grid}
+.workspace-evidence-table>div{display:grid;grid-template-columns:minmax(210px,.8fr) 1.2fr;gap:18px;padding:13px 0;border-top:1px solid #edf0f4}
+.workspace-evidence-table>div:first-child{border-top:0}
+.workspace-evidence-table span{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:650;color:#2d5e9c}
+.workspace-evidence-table p{font-size:10px;line-height:1.7;color:var(--ws-muted);margin:0}
+.workspace-evidence-table.is-gaps span{color:#93601e}
+.workspace-notice code{font:9px ui-monospace,monospace;color:#3d5b8f}
+.workspace-notice a{display:inline-flex;align-items:center;gap:2px;color:#2c5da8}
 @media(max-width:900px){.workspace{grid-template-columns:220px minmax(0,1fr)}.workspace-verification-page .access-console{grid-template-columns:1fr;gap:20px}}
-@media(max-width:700px){.workspace{display:block}.workspace-sidebar{position:fixed;left:0;top:0;width:min(290px,86vw);transform:translateX(-105%);transition:transform .25s ease;box-shadow:none}.workspace-sidebar.is-open{transform:translateX(0);box-shadow:15px 0 50px #101a2c20}.workspace-icon-button{display:grid}.workspace-mobile-trigger{margin-right:12px}.workspace-mobile-close{display:grid}.workspace-scrim{display:block;position:fixed;inset:0;z-index:35;border:0;background:#10182766}.workspace-topbar{height:60px;padding:0 17px;justify-content:flex-start}.workspace-breadcrumb{flex:1}.workspace-topbar-right{gap:10px}.workspace-content{padding:30px 17px 50px}.workspace-status-grid,.workspace-action-grid{grid-template-columns:1fr}.workspace-page{gap:25px}.workspace-page-heading{display:grid;gap:14px}.workspace-readonly-pill{justify-self:start}.workspace-footer{padding:15px 17px;flex-wrap:wrap}.workspace-footer span:nth-child(2){display:none}.workspace-input-row{flex-direction:column}.workspace-input-row button{min-height:42px}.workspace-config-list>div{grid-template-columns:1fr;gap:6px}}
+@media(max-width:700px){.workspace-command-grid{grid-template-columns:1fr}.workspace-evidence-table>div{grid-template-columns:1fr;gap:5px}.workspace{display:block}.workspace-sidebar{position:fixed;left:0;top:0;width:min(290px,86vw);transform:translateX(-105%);transition:transform .25s ease;box-shadow:none}.workspace-sidebar.is-open{transform:translateX(0);box-shadow:15px 0 50px #101a2c20}.workspace-icon-button{display:grid}.workspace-mobile-trigger{margin-right:12px}.workspace-mobile-close{display:grid}.workspace-scrim{display:block;position:fixed;inset:0;z-index:35;border:0;background:#10182766}.workspace-topbar{height:60px;padding:0 17px;justify-content:flex-start}.workspace-breadcrumb{flex:1}.workspace-topbar-right{gap:10px}.workspace-content{padding:30px 17px 50px}.workspace-status-grid,.workspace-action-grid{grid-template-columns:1fr}.workspace-page{gap:25px}.workspace-page-heading{display:grid;gap:14px}.workspace-readonly-pill{justify-self:start}.workspace-footer{padding:15px 17px;flex-wrap:wrap}.workspace-footer span:nth-child(2){display:none}.workspace-input-row{flex-direction:column}.workspace-input-row button{min-height:42px}.workspace-config-list>div{grid-template-columns:1fr;gap:6px}}
 @media(prefers-reduced-motion:reduce){.workspace *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}

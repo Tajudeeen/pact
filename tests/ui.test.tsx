@@ -22,6 +22,7 @@ describe("Pact Access routes", () => {
     ["/app/verification", "Owner verification"],
     ["/app/payments", "Payments"],
     ["/app/activity", "Activity"],
+    ["/app/evidence", "Evidence"],
     ["/app/settings", "Settings"],
   ])("renders the %s workspace route", async (path, heading) => {
     render(
