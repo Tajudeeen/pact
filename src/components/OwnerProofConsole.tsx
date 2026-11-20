@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, Copy, Fingerprint, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
-import { ApiError, api, browserPreview } from "../api";
+import { accessApi, AccessApiError } from "../access/api";
 import { createConcordiumOwnerProof } from "../access/concordium-wallet";
 
 interface AccessChallenge {
@@ -46,7 +46,7 @@ export function OwnerProofConsole() {
     setProof(null);
     setChallenge(null);
     try {
-      const result = await api<AccessChallenge>("/access/challenges", {
+      const result = await accessApi<AccessChallenge>("/access/challenges", {
         method: "POST",
         body: { buyerAgentId: agentId.trim() },
       });
@@ -71,7 +71,7 @@ export function OwnerProofConsole() {
         setChallenge(null);
         throw new Error("The challenge expired while signing. Request a fresh challenge.");
       }
-      const verification = await api<{
+      const verification = await accessApi<{
         requestId: string;
         status: "verified";
         verifiedAccount: string;
@@ -101,7 +101,7 @@ export function OwnerProofConsole() {
         expiresAt: verification.expiresAt,
       });
     } catch (cause) {
-      if (cause instanceof ApiError && [401, 403, 409, 410].includes(cause.status)) {
+      if (cause instanceof AccessApiError && [401, 403, 409, 410].includes(cause.status)) {
         setChallenge(null);
         setProof(null);
       }
@@ -146,13 +146,7 @@ export function OwnerProofConsole() {
           <span>PACT / OWNER VERIFICATION</span>
           <span className="access-console-state"><i/> TESTNET FLOW</span>
         </div>
-        {browserPreview ? (
-          <div className="access-console-notice">
-            <strong>Live access API unavailable in this preview.</strong>
-            <p>Open the deployed Pact Access app to request a server-issued challenge.</p>
-          </div>
-        ) : (
-          <>
+        <>
             <label className="access-console-label" htmlFor="pact-agent-id">CIS-8004 buyer agent ID</label>
             <input
               id="pact-agent-id"
@@ -189,7 +183,7 @@ export function OwnerProofConsole() {
                   <button className="access-console-button secondary" onClick={() => void signChallenge()} disabled={expired || busy !== null}>
                     {busy === "sign" ? <><LoaderCircle size={15} className="access-spin"/> Waiting for Concordium wallet</> : <>Connect wallet and sign <Fingerprint size={15}/></>}
                   </button>
-                )}
+        
                 {proof && (
                   <button className="access-console-button" onClick={() => void copyHandoff()} disabled={accessExpired}>
                     {copied ? <><Check size={15}/> Handoff copied</> : <><Copy size={15}/> Copy buyer-agent handoff</>}
