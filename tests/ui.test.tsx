@@ -30,6 +30,8 @@ describe("Pact Access routes", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole("heading", { name: heading })).toBeDefined();
+    if (path === "/app/verification")
+      expect(screen.getByLabelText("CIS-8004 buyer agent ID")).toBeDefined();
   });
 
   it("routes the legacy evidence URL to the audit activity page", async () => {
