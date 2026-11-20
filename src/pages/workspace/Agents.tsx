@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Bot, LoaderCircle, Search, ShieldCheck } from "lucide-react";
-import { api } from "../../api";
+import { accessApi } from "../../access/api";
 
 const tokenPattern = /^[1-9A-HJ-NP-Za-km-z]{20,80}$/;
 
@@ -17,7 +17,7 @@ export function Agents() {
     setError("");
     setResult(null);
     try {
-      setResult(await api<unknown>(`/access/registry/${encodeURIComponent(token.trim())}`));
+      setResult(await accessApi<unknown>(`/access/registry/${encodeURIComponent(token.trim())}`));
     } catch (cause) {
       setError((cause as Error).message || "Registry lookup failed.");
     } finally {
