@@ -194,7 +194,6 @@ export function OwnerProofConsole() {
             )}
             {error && <p className="access-console-error" role="alert">{error}</p>}
           </>
-        )}
         <div className="access-console-foot"><span>FAIL-CLOSED BY DEFAULT</span><span>NO PAYMENT FROM THIS SCREEN</span></div>
       </div>
     </section>
