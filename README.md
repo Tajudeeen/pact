@@ -78,6 +78,21 @@ Do not submit a demo built from unit tests, synthetic signatures, or a simulated
 
 Start with one seller and one protected resource. Sellers configure the canonical resource URL, CCD price, payout account, and sponsor. Buyers register agents with a valid CIS-8004 badge and set the `agentWallet` on-chain. Pact re-checks the registry binding before owner-proof acceptance and again before settlement. The facilitator sponsors network fees, requires finalized settlement, and records a transaction hash. Expand to more sellers only after the first testnet flow and its failure cases are independently reproduced. Full version, including monitoring and key-custody notes: [docs/SUBMISSION.md](docs/SUBMISSION.md#go-live-plan).
 
+## Product site and operational workspace
+
+The frontend has two surfaces:
+
+- `/` — the public product site: what Pact is, its trust model, and integration docs.
+- `/app/*` — a route-based operational workspace (Overview, Agents, Verification, Payments, Activity, Evidence, Settings). Direct visits and refreshes on nested routes are served by the Vercel SPA fallback.
+
+The workspace is read-only and single-operator. It does not claim authentication or seller tenancy. Pact Access screens use the dedicated same-origin transport in `src/access/api.ts`; the legacy browser-local trading transport in `src/api.ts` is not mounted in the Pact Access runtime. Service-health cards distinguish an endpoint that responds from a capability that is configured: a reachable but disabled facilitator reads "Not configured", never healthy. Payment health is readiness evidence, not a submitted or settled payment. The Activity route stays empty until an authorized sanitized audit API exists.
+
+See [the product architecture](docs/PRODUCT_ARCHITECTURE.md) for the route map, data-honesty rules, follow-on API contracts, and release gates. [Evidence](docs/hackathon-intelligence.md) and [problem inventory](docs/problem-inventory.md) record the verified brief, live endpoint reads, and honest gaps; `/app/evidence` exposes copyable re-verification commands.
+
+## Local QA
+
+`node scripts/qa-serve.mjs` serves the production build from `dist/` with an SPA fallback and deterministic mock API responses on port 8792. It is a local visual/mobile QA aid only — never deployed and never evidence of a live backend.
+
 ## Development
 
 The production frontend is served through Vercel. The main access API and the facilitator placeholder run on Cloudflare Workers Free and share D1. The main Worker handles trusted registry checks, 90-second owner challenges, and server-side Concordium signature verification; a successful proof opens a 12-minute window for x402 settlement.

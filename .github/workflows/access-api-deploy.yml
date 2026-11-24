@@ -1,0 +1,56 @@
+name: Pact Access API deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY_PACT_ACCESS_TESTNET to deploy the Pact Access API Worker."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pact-access-api-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'DEPLOY_PACT_ACCESS_TESTNET' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: "2e00bed2098037fb6749eb3efffc298e"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Validate Cloudflare deployment token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "Missing CLOUDFLARE_API_TOKEN. Add the repository Actions secret first."
+            exit 1
+          }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Bundle Pact Access API Worker
+        run: pnpm exec wrangler deploy --dry-run --config wrangler.access.jsonc
+      - name: Deploy Pact Access API Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm exec wrangler deploy --config wrangler.access.jsonc
+      - name: Verify live Pact Access API health
+        run: |
+          response=$(curl --fail --silent --show-error https://pact-access-api.tajudeenisah02.workers.dev/api/health)
+          echo "$response"
+          node -e 'const data = JSON.parse(process.argv[1]); if (data.status !== "ok" || data.storage !== "ready") process.exit(1)' "$response"

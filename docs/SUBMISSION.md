@@ -53,3 +53,16 @@ If any real testnet step is still unavailable on recording day, say exactly whic
 ## Go-live plan
 
 Start with one seller and one protected resource. Sellers configure the canonical resource URL, CCD price, payout account, and sponsor. Buyers register agents with a valid CIS-8004 badge and set the agentWallet on-chain. Pact re-checks the registry binding before owner-proof acceptance and again before settlement. The facilitator sponsors network fees, requires finalized settlement, and records a transaction hash. Monitor registry outages, pending finality, failed transactions, D1 state conflicts, and resource integrity. Keep all sponsor and buyer wallet private keys in dedicated secret stores. Expand to more sellers only after the first testnet flow and failure cases are independently reproduced.
+
+
+## Official judging criteria mapping (verified 2026-11-20)
+
+Source: https://www.concordium.com/article/concordium-trusted-agents-hackathon-encode-club
+
+- Depth of Concordium use: CIS-8004 registry re-checks at challenge, proof and settlement; Ed25519 verification against fresh testnet account credentials; x402 facilitator source based on the official Exact scheme (not deployed). The brief's Verified by Concordium identity badge is **not** implemented — Pact's proof is owner-account control and is labeled as such everywhere.
+- Core flow end to end: challenge and owner-proof path is verified live; payment, finality and resource delivery are disabled and stated as such. No step is presented as complete when it is not.
+- Real problem: sellers of paid APIs/data need attribute-based access without collecting identity documents (see docs/PACT_ACCESS_SPEC.md).
+- Route to mainnet and real users: see the go-live plan above; first one seller and one resource, expand only after a reproduced testnet flow.
+- Required artifacts: public repo and description exist. The demo video, **CCDExplorer link** and go-live plan are submission artifacts still to be produced. No transaction exists yet, so no CCD link can be supplied without fabrication.
+
+Judge re-verification is available in the workspace at `/app/evidence` and in `docs/hackathon-intelligence.md` and `docs/problem-inventory.md`.

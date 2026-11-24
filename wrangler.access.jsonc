@@ -29,6 +29,8 @@
     "PACT_ACCESS_SELLER_ID": "pact-access-demo",
     "PACT_ACCESS_RESOURCE_URL": "https://pact-access.vercel.app/api/access/resource",
     "CONCORDIUM_AGENT_REGISTRY_INDEX": "12802",
-    "CONCORDIUM_AGENT_REGISTRY_SUBINDEX": "0"
-  }
+    "CONCORDIUM_AGENT_REGISTRY_SUBINDEX": "0",
+    "PACT_PREVIEW_ORIGINS": "https://pact-git-feat-pact-multipage-workspace-deeencodes.vercel.app"
+  },
+  "account_id": "2e00bed2098037fb6749eb3efffc298e"
 }

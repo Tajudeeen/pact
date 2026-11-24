@@ -21,17 +21,33 @@ function json(data, status = 200, origin = "") {
   return new Response(JSON.stringify(data), { status, headers });
 }
 
-function isAllowedBrowserRequest(request, expectedOrigin) {
-  const origin = request.headers.get("Origin");
-  if (origin) return origin === expectedOrigin;
+export function isAllowedBrowserRequest(
+  request,
+  expectedOrigin,
+  additionalOrigins = "",
+) {
+  // Preview support is an explicit exact-origin allowlist. Never accept
+  // arbitrary *.vercel.app hosts or trust a Referer when Origin is present.
+  const allowed = new Set();
+  for (const value of [expectedOrigin, ...String(additionalOrigins).split(",")]) {
+    if (!value.trim()) continue;
+    try {
+      const parsed = new URL(value.trim());
+      if (parsed.protocol === "https:") allowed.add(parsed.origin);
+    } catch {
+      // Invalid configured origins are ignored and fail closed.
+    }
+  }
 
-  // Vercel rewrites proxy the request to the Worker and may omit Origin.
-  // Accept only a Referer whose parsed origin exactly matches the configured
-  // frontend. Requests with neither header remain blocked.
+  const origin = request.headers.get("Origin");
+  if (origin) return allowed.has(origin);
+
+  // Vercel rewrites may omit Origin but retain Referer. Accept only an exact
+  // production or explicitly configured preview origin.
   const referer = request.headers.get("Referer");
   if (!referer) return false;
   try {
-    return new URL(referer).origin === expectedOrigin;
+    return allowed.has(new URL(referer).origin);
   } catch {
     return false;
   }
@@ -586,7 +602,7 @@ async function rejectOwnerProof(env, requestId, reason, origin, status = 401) {
 }
 
 async function verifyOwnerProof(request, env, origin) {
-  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
+  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN, env.PACT_PREVIEW_ORIGINS))
     return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
   let body;
   try {
@@ -742,7 +758,7 @@ async function registryBindingResponse(tokenAddress, env) {
 }
 
 async function issueChallenge(request, env, origin) {
-  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN))
+  if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN, env.PACT_PREVIEW_ORIGINS))
     return json({ code: "ORIGIN_REJECTED", message: "Request origin is not allowed." }, 403, origin);
 
   if (!env.DB || !env.PACT_ACCESS_SELLER_ID || !env.PACT_ACCESS_RESOURCE_URL)
@@ -854,7 +870,7 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
-      if (origin !== env.PACT_ORIGIN)
+      if (!isAllowedBrowserRequest(request, env.PACT_ORIGIN, env.PACT_PREVIEW_ORIGINS))
         return new Response(null, { status: 403 });
       return new Response(null, {
         status: 204,

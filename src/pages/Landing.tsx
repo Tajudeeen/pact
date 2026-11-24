@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, Check, ChevronDown, Fingerprint, LockKeyhole, Menu, ShieldCheck, Wallet, X, Zap } from "lucide-react";
 import { Link } from "react-router";
-import { OwnerProofConsole } from "../components/OwnerProofConsole";
 import { BrandSplash } from "../components/BrandSplash";
 
 const flow = [
@@ -48,7 +47,7 @@ export function Landing() {
         <Link to="/" aria-label="Pact home" className="access-brand"><img className="access-brand-image" src="/pact-mark.svg" alt="" /><span>pact<span className="access-brand-dot">.</span></span></Link>
         <nav className={mobileMenuOpen ? "access-nav-links is-open" : "access-nav-links"} aria-label="Main navigation"><a href="#flow" onClick={() => setMobileMenuOpen(false)}>How it works</a><a href="#verification" onClick={() => setMobileMenuOpen(false)}>Verification</a><a href="#developers" onClick={() => setMobileMenuOpen(false)}>Developers</a><a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a></nav>
         <button className="access-mobile-menu" type="button" aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? <X size={18}/> : <Menu size={18}/>}</button>
-        <a className="access-nav-cta" href="#owner-proof">Try owner verification <ArrowUpRight size={15}/></a>
+        <Link to="/app/overview" className="access-nav-cta">Open workspace <ArrowUpRight size={15}/></Link>
       </header>
 
       <main>
@@ -88,7 +87,6 @@ export function Landing() {
           <div className="access-flow-grid">{flow.map((item, index)=><article className="access-flow-card" key={item.n} data-reveal style={{ transitionDelay: `${index * 80}ms` }}><div className="flow-card-top"><span>{item.n}</span><ArrowUpRight size={16}/></div><h3>{item.title}</h3><p>{item.text}</p><div className="access-flow-card-line"/></article>)}</div>
         </section>
 
-        <OwnerProofConsole />
 
         <section id="verification" className="access-security-section">
           <div data-reveal><div className="access-kicker">THE TRUST BOUNDARY</div><h2>verify account control.<br/><em>keep identity private.</em></h2><p>The owner signs a short-lived, request-specific challenge. Pact verifies the signature against fresh Concordium account information, then checks the active Agent Registry record and its registered payment wallet.</p></div>

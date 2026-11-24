@@ -14,15 +14,14 @@ afterEach(() => {
 });
 
 describe("Pact Access route boundary", () => {
-  it("redirects the retired perps workspace to Pact Access", async () => {
+  it("mounts the operational workspace at /app", async () => {
     render(
       <MemoryRouter initialEntries={["/app"]}>
         <App />
       </MemoryRouter>,
     );
-    expect(
-      await screen.findByRole("heading", { name: /access for agents/i }),
-    ).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeDefined();
+    expect(screen.getByRole("navigation", { name: "Workspace navigation" })).toBeDefined();
     expect(screen.queryByRole("button", { name: "Check recovery" })).toBeNull();
   });
 
