@@ -1,72 +1,24 @@
-# Pact evidence register
+# Pact Access evidence register
 
-Evidence is separated by what it actually establishes. No live order hashes, funding outcomes, users or awards are invented.
+This is the evidence ledger for the Concordium Trusted Agents Hackathon submission. It lists what has actually been verified, how, and what has not.
 
-| Evidence                         | What it establishes                                                                                                                                                 | Limits                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `pnpm test`                      | Pure sizing, API ownership, atomic approvals, invalid-mark handling, exact signed payload, close timeout/restart/flat checks and rendered consent/recovery behavior | Local fixtures, fake venue, deterministic replay                   |
-| Actual single-process HTTP smoke | Built app shell served 200, API health/storage ready, practice sign-in returned 200                                                                                 | No external browser visual QA                                      |
-| `pnpm typecheck` / `pnpm build`  | Type correctness and production asset compilation                                                                                                                   | Does not establish runtime trading                                 |
-| `read-only-probe.json`           | Actual observed chain/discovery/connectivity results                                                                                                                | No order or fill                                                   |
-| Practice receipts                | Simulated entry/close records and approval terms                                                                                                                    | No blockchain transaction                                          |
-| `browser-verification.json`      | Desktop practice checks and successful Chromium installation                                                                                                        | Mobile wallet and server-backed browser recovery remain unverified |
-| Actual testnet lifecycle         | Pending                                                                                                                                                             | Needed for the bounty                                              |
-| Desktop browser practice QA      | Approval, simulated fill/close, reload persistence and receipt download passed                                                                                      | Browser-local practice, no blockchain transaction                  |
+Everything under [`legacy-somnia/`](legacy-somnia/) is from the previous Somnia/dreamDEX perpetual-trading product this repository used to be. It establishes nothing about Pact Access and is kept only as historical project context, per the convention already used in `docs/` (see the "archived" banner on `docs/ARCHITECTURE.md`, `docs/FAILURES.md`, and others). Do not cite it as submission evidence.
 
-The latest observed probe passed: chain ID **50383**, **21 perp markets**, and a valid on-chain mark for the discovered ZRO market. An earlier WebSocket/genesis-check failure was resolved using the SDK’s supported proxy-aware constructor seam with explicit retirement-error handling. See `read-only-probe.json` for the exact timestamp and results. **Orders placed: 0.**
+## How to re-verify any claim in this register
 
-Local checks: **170 tests across twenty-one files**, workspace type checking and production compilation passed. The DOM integration tests render React and call the real API/service/storage boundary, including the attention-to-closed recovery flow. They do not establish visual browser or mobile-wallet behavior.
+| Command | What it actually establishes | What it does not |
+| --- | --- | --- |
+| `pnpm test` | Pipeline state-machine transitions, owner-binding checks, settlement denial paths, challenge replay/expiry handling — all against fixtures, not a live network | Real chain behavior |
+| `pnpm typecheck` / `pnpm build` | Type correctness and that the frontend compiles | Runtime correctness |
+| `pnpm run check:cloudflare` / `pnpm run build:cloudflare` | The Worker bundles and type-checks against the Cloudflare runtime | That it is deployed or configured correctly |
+| `pnpm run live:check` | The real, current state of the deployed endpoints (`/api/health`, `/api/access/payment-health`, and optionally a CIS-8004 registry lookup), written to a timestamped file in this directory | Identity proof, payment, or resource delivery — it is a read-only reachability and status check |
 
-## Browser preview verification
+`pnpm run live:check` exists specifically so that "Current status" in the README and in `docs/RELEASE_STATUS.md` is a claim you can re-run and check, not prose that quietly goes stale. Run it before recording a demo or submitting, and commit the resulting `pact-live-check-*.json` file alongside whatever it confirms or contradicts.
 
-The private ChatGPT Site publishes the same screens with a labeled, browser-local practice adapter. Desktop checks passed: landing → session → setup → account-specific sizing → consent → simulated fill → close → refresh → downloaded receipt. The receipt was inspected: replay mode, closed state, two simulated fills, zero net PnL and no transaction hashes. See `browser-verification.json` for the exact scope. This does not qualify the Node execution adapter or mobile-wallet flow.
+## What is verified as of this register
 
-## Execution regression evidence
+See `docs/RELEASE_STATUS.md` for the full dated snapshot. In short: the main access Worker, D1, owner-challenge issuance, and server-side Ed25519 signature verification are deployed and have been exercised, including a production negative-signature test that correctly returned HTTP 401. The dedicated x402 facilitator builds and type-checks but is not deployed, pending one GitHub Actions secret (`docs/PC_CHECKLIST.md` has the exact steps).
 
-The local suite reproduces the three review findings with controlled inputs: an invalid zero mark must not prepare a close, a fresh close on an hour-old trade must not immediately time out, and improved entry prices with increased funding must use the freshly checked execution payload. The suite also checks signing that crosses the approval deadline, quantity/hash/role/price mismatches, shared operator blocking, a reverted close without retries, and retaining risk until a flat-position observation. No real wallet or chain transaction is used by these fixtures.
+## What is not yet verified
 
-## Actual execution evidence to add
-
-After funded execution, add sanitized receipts and transaction links identifying network, pool, owner/operator, side, approval, fill quantity and close result. Redact any private transport or credential data. Keep the full signed action body private in `.data`.
-
-Tests are behavioral evidence within their inputs, not proof of production reliability, adoption or profitable trading.
-
-## Cloudflare acceptance, 24 October 2026
-
-Deployment: https://pact-testnet.tajudeenowoeteniyan.workers.dev. Initial provider deployment ID `e1ef91e9ac8146ce94ba28b2597f837e`, SQLite migration `v1`, native WebSocket SDK constructor.
-
-- Local workerd: complete HTTP practice flow passed using real SQLite Durable Objects and alarms. A full dev-worker stop/start preserved the opaque session and its five accounts.
-- Deployed Worker: practice approval, alarm-driven simulated fill, close and receipt passed. Repeated approval returned the same intent. Cross-session access and late entry were refused. The lost-response scenario reconciled and closed. No hash was fabricated.
-- Deployed read-only probe at `2026-10-24T07:14:08.275Z`: chain 50383, 21 markets, valid mark. This checks network connectivity, not trading permissions, margin or actual execution.
-- Owner allowlist regression tests reject a different wallet and reject an older challenge after an owner restriction is applied.
-- No real testnet order was placed. Owner linking, gas/margin funding, matching entry/close fills and wallet/mobile signing remain pending.
-
-The Playwright CDN retry still returned invalid ZIP content. The previously downloaded official Chrome-for-Testing Headless Shell launches and reports version 151.0.7922.34. Deployment UI verification uses the managed cloud browser. Local browser installation does not establish wallet compatibility.
-
-## Live market quote integration
-
-The deployed endpoint returned actual BTC/ETH testnet marks, best bids/asks, pool addresses and index oracle timestamps. The rendered landing page displayed those observations as live. 78 tests across ten files pass, with cache, malformed/invalid mark, stale timestamp, partial outage, wrong-network and rendered stale-state coverage. Source outages retain the last valid observation and time, with a stale label. No quote check submits a trade. [Integration detail](../docs/LIVE_MARKETS.md).
-
-## Trading access and signing qualification
-
-Ten new regression cases exercise wallet-only access checks, blocked setup conditions, positive read-only access, wrong-chain refusal, RPC failure, report expiry and changed-market cancellation, failed FOK simulation, insufficient operator gas and a close signing past its position check. All 88 tests across twelve files pass. These checks use controlled transports and do not establish a real testnet order. Actual entry/close hashes and matching fills remain pending.
-
-## Execution qualification revision
-
-The current suite covers 133 cases across eighteen files. Added checks exercise current effective margin and fee-unit conversion, malformed numeric input refusal, fee-inclusive risk, long/short liquidation buffers, canonical block confirmation, exact transaction identity and signed bytes, exported-receipt tampering, the mainnet refusal, persistent entry pause through restart and the rendered API/SQLite path, and holding repeat entries when settled daily costs are unknown. All chain transports in these execution tests are controlled. No real order, independent security audit, or mainnet compatibility is claimed. See [release gates](../docs/MAINNET.md).
-
-Local Wrangler runtime QA was attempted but stopped with the host error `uv_interface_addresses returned Unknown system error 1`. This is recorded as unavailable, not a passing Worker runtime test. Type checking, Worker bundling and deployed browser checks are separate evidence.
-
-The deployed revision completed late-entry refusal, sizing, expiry refusal, alarm-driven practice fill, close, reload persistence and receipt download. The deployed config retained the original operator and explicitly blocked mainnet. [Exact scope and observations](qualification-browser.json). All trades in this browser qualification were simulated.
-
-## Tokyo implementation revision
-
-The current 170-test suite across twenty-one files passes. Added coverage exercises resumable canonical bank-log accounting, fees/rebates/signed funding, complete entry-to-flat evidence, first-page retry backoff, rejected removed/duplicate/outside activity, independently rebuilt receipt totals, USDso daily-budget recovery, fixed close-day accounting, exact close ticks/depth, published system-wiring identity, Tokyo wallet switching/adding and account/network-change refusal. The rendered order reaches authenticated cost verification through the API and SQLite without preparing another action.
-
-`pnpm typecheck`, `pnpm check:cloudflare` and `pnpm build:cloudflare` pass. Tokyo release checks pass; mainnet refuses as designed. These are controlled tests and compilation, with no actual filled order or mobile wallet qualification. The public-address CLI returned unavailable with the SDK genesis-check error from this local host. That is not a ready account report.
-
-The ledger reports a USDso trading result after complete coverage. Native STT gas is separate. It does not invent a conversion rate or claim historical consent. The live owner still needs to sign in, link the unchanged dedicated operator, fund eligible test margin and gas, approve an appropriate setup, then capture actual entry/close and accounting proof.
-
-The deployed Tokyo revision passed late-entry refusal, standard sizing and approval, background simulated fill, close, reload persistence and receipt download. The original operator identity remained unchanged. [Revision evidence](tokyo-implementation.json) and [practice screenshot](tokyo-practice-20261024.jpg). All browser trades were practice; actual chain orders remain zero.
-
-The final read-only probe at `2026-10-24T19:02:54.444Z` also passed the bank-log RPC path for block `32164755` (zero logs in that block), along with published system wiring, pool registration/code, chain 50383, 21 markets and a valid mark. This proves read access, not attributed live trade costs.
+No real CIS-8004 badge has passed the official Agent Registry verifier. No genuine owner signature, settled CCD payment, CCDScan transaction link, or actual protected-resource delivery has occurred. Do not treat any test fixture, synthetic signature, or simulated payment anywhere in this repository as evidence of a working end-to-end flow. `docs/JUDGE_GUIDE.md` has the exact sequence still required to close this gap.

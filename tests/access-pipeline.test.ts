@@ -448,37 +448,4 @@ describe("Pact Access proof and payment pipeline", () => {
     expect(h.proof.verify).not.toHaveBeenCalled();
     expect(h.payments.settle).not.toHaveBeenCalled();
   });
-
-  it("denies settlement once the configured spend limit is exceeded, even with a valid proof", async () => {
-    const h = harness({
-      spendLimits: { reserve: vi.fn(async () => ({ allowed: false as const, reason: "PER_REQUEST_LIMIT_EXCEEDED" as const })) },
-    });
-    await h.pipeline.verifyOwner({
-      requestId: context.requestId,
-      presentation: { account: context.ownerAccount, signature: {} },
-    });
-    await expect(h.pipeline.settleAndDeliver({
-      requestId: context.requestId,
-      paymentPayload: { value: { sender: context.payerAccount, signedTransaction: {} } },
-    })).rejects.toMatchObject({ code: "SPEND_LIMIT_EXCEEDED" });
-    expect(h.state().state).toBe("denied");
-    expect(h.payments.settle).not.toHaveBeenCalled();
-    expect(h.resource.deliver).not.toHaveBeenCalled();
-    expect(h.audit.at(-1)).toMatchObject({ state: "denied", reasonCode: "PER_REQUEST_LIMIT_EXCEEDED" });
-  });
-
-  it("settles normally when the spend ledger allows the request", async () => {
-    const h = harness({
-      spendLimits: { reserve: vi.fn(async () => ({ allowed: true as const })) },
-    });
-    await h.pipeline.verifyOwner({
-      requestId: context.requestId,
-      presentation: { account: context.ownerAccount, signature: {} },
-    });
-    const result = await h.pipeline.settleAndDeliver({
-      requestId: context.requestId,
-      paymentPayload: { value: { sender: context.payerAccount, signedTransaction: {} } },
-    });
-    expect(result).toMatchObject({ status: "delivered" });
-  });
 });

@@ -44,9 +44,9 @@ Last verified state (see [docs/SUBMISSION.md](docs/SUBMISSION.md) for the dated 
 
 Do not read any part of this project as a complete end-to-end demo until a real badge passes verification, a real owner signs, a transaction finalizes on testnet, and the exact protected bytes are retrieved. [docs/PC_CHECKLIST.md](docs/PC_CHECKLIST.md) is the exact, step-by-step path to close this gap, starting with that one GitHub secret.
 
-**Added in this pass, additive and not yet wired into the deployed path:** a deterministic per-seller spend-limit ledger (`server/access/spend-limit.ts`, both an in-memory and a SQL/D1-backed implementation) that caps a buyer's spend per request and over a rolling window, independent of whether the identity proof is valid. It is fully unit-tested (`tests/access-spend-limit.test.ts`, plus two new cases in `tests/access-pipeline.test.ts`) and plugs into `AccessPipeline` as an optional dependency, so it changes nothing about the currently deployed Worker unless a seller policy is explicitly passed in. Worth flagging directly: [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md) lists spend limits as an explicit non-goal for this first release, on the reasoning that scope should stay narrow until the one real testnet payment flow above is proven. Treat this as a reviewed, ready-to-enable addition for after that milestone, not a reason to deprioritize it.
+Run [`pnpm run live:check`](scripts/pact-live-check.mjs) at any time to re-verify the claims above against the real deployed endpoints rather than trusting this prose; it writes a timestamped report to `evidence/`. See [Evidence](#evidence) below.
 
-Original Somnia/dreamDEX perps history is preserved in Git history; it is not part of the current product scope.
+Original Somnia/dreamDEX perps history is preserved in Git history and archived under `evidence/legacy-somnia/`; it is not part of the current product scope and is not evidence for this submission.
 
 ## Why Pact
 
@@ -60,7 +60,6 @@ Sellers need a way to apply an access requirement to agent traffic without colle
 - No names, identity documents, raw credentials, secrets, or reusable proof material appear in logs or audit records.
 - A signature proves only control of the account that signed it, nothing more.
 - Test fixtures and simulations are labeled as such and never presented as live chain evidence.
-- The optional spend-limit ledger (above) reserves capacity before settlement is attempted, so two concurrent requests from the same buyer cannot both race past the same cap; it fails closed, with no configured policy treated as "no additional cap," never as "unlimited by default."
 
 ## Submission requirements
 
@@ -107,6 +106,12 @@ pnpm dev:web      # local frontend
 
 The full facilitator implementation lives in `cloudflare/facilitator-worker/`; see [docs/CLOUDFLARE_FREE_BACKEND.md](docs/CLOUDFLARE_FREE_BACKEND.md) for the exact deployment steps and required secrets, and [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md) for the trust-boundary reasoning behind them.
 
+## Evidence
+
+[evidence/README.md](evidence/README.md) is the ledger: what's verified, how to re-verify it yourself, and what is explicitly not yet demonstrated. Run `pnpm run live:check` before recording a demo or submitting; it re-checks the live deployment against the claims in this README and writes a timestamped, committable report instead of asking anyone to trust hand-typed status prose.
+
+Material under `evidence/legacy-somnia/` is from the previous Somnia/dreamDEX product this repository used to be. It is not evidence for this submission.
+
 ## Documentation index
 
 - [docs/JUDGE_GUIDE.md](docs/JUDGE_GUIDE.md) — ten-second and one-minute versions for reviewers, plus every failure case Pact is expected to handle.
@@ -115,3 +120,4 @@ The full facilitator implementation lives in `cloudflare/facilitator-worker/`; s
 - [docs/PACT_ACCESS_SPEC.md](docs/PACT_ACCESS_SPEC.md) — product scope, proof boundary, and explicit non-goals for this release.
 - [docs/INTEGRATION_DECISIONS.md](docs/INTEGRATION_DECISIONS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design and trust-boundary detail.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting.
+- [evidence/README.md](evidence/README.md) — what's verified, what isn't, and how to re-check it yourself.

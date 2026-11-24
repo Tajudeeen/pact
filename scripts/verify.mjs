@@ -4,14 +4,20 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+// "release-gates" (release-check.ts) and "read-only-doctor" (doctor.ts) were
+// dropped from this list: both are Somnia/dreamDEX-era checks against a
+// different chain (chainId 50383) and have nothing to do with the current
+// Concordium Pact Access product. Running them here gave a pass/fail signal
+// about the wrong deployment. The files are left in place as archived
+// history, not deleted, but are no longer part of what "verified" means for
+// this product. Use `pnpm run live:check` for a real read-only check of the
+// current Pact Access deployment.
 const tasks = [
   ["tests", ["test"]],
   ["types", ["typecheck"]],
   ["web-build", ["build"]],
   ["cloudflare-types", ["check:cloudflare"]],
   ["cloudflare-bundle", ["build:cloudflare"]],
-  ["release-gates", ["release:check"]],
-  ["read-only-doctor", ["run", "doctor"]],
 ];
 const startedAt = new Date().toISOString();
 const results = [];

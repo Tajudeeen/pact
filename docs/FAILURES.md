@@ -31,7 +31,7 @@
 | Exported fee, funding, event or net result changed | Reject independent verification                                        | Receipt verifier tampering tests                                                       |
 | Close tick or depth exceeds the permitted bound    | Refuse before signing                                                  | Long/short adapter close tests                                                         |
 | Wallet changes network or account during sign-in   | Refuse the login                                                       | Wallet provider regression tests                                                       |
-| Browser runtime unavailable                        | Report visual verification incomplete                                  | Chromium missing, installation download failed; see evidence/browser-verification.json |
+| Browser runtime unavailable                        | Report visual verification incomplete                                  | Chromium missing, installation download failed; see evidence/legacy-somnia/browser-verification.json |
 
 ## At-most-once trade-off
 

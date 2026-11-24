@@ -37,6 +37,10 @@ Build evidence:
 - No real owner wallet proof, CCD payment transaction, CCDScan link, or protected resource delivery has been demonstrated.
 - Workers Free CPU usage for the actual x402 settlement path has not been measured with a live transaction. The 10 ms CPU cap is configured, but a real settlement must prove the implementation fits.
 
+## Re-checking this document
+
+Run `pnpm run live:check` to re-verify the reachable items above (main Worker health, payment-health status) against the live deployment right now rather than trusting this date. It writes a timestamped report to `evidence/`. It cannot check anything requiring a wallet, a badge, or a payment; those still require the manual steps in `docs/PC_CHECKLIST.md`.
+
 ## Release gate
 
 Pact is not ready for a live paid-resource release or final hackathon demo. Keep the facilitator fail-closed until a valid agent badge, funded sponsor, seller payout account, real buyer agent, finalized payment, and exact resource delivery are verified end to end.

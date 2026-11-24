@@ -28,6 +28,7 @@
     "types:cloudflare": "wrangler types cloudflare/env.d.ts --strict-vars=false --include-runtime=false",
     "check:cloudflare": "tsc --noEmit -p cloudflare/tsconfig.json",
     "verify": "node scripts/verify.mjs",
+    "live:check": "node scripts/pact-live-check.mjs",
     "evidence:collect": "node scripts/collect-evidence.mjs",
     "facilitator": "tsx server/facilitator/index.ts",
     "facilitator:dev": "tsx watch server/facilitator/index.ts",
