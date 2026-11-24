@@ -110,3 +110,32 @@ export interface AccessAuditEvent {
 export interface AccessAuditWriter {
   append(event: AccessAuditEvent): Promise<void>;
 }
+
+/**
+ * Deterministic, policy-level cap layered on top of the identity/owner proof.
+ * The owner proof answers "is this agent authorized to act". This answers
+ * "is this specific spend still within the limits the seller configured for
+ * this buyer", independent of whether the proof or the price is valid.
+ * Reservation happens before settlement is attempted so a buyer cannot race
+ * two concurrent requests past the same cap.
+ */
+export interface SpendLimitLedger {
+  reserve(input: {
+    sellerId: string;
+    buyerAgentId: string;
+    amount: string;
+    asset: string;
+    now: Date;
+  }): Promise<
+    | { allowed: true }
+    | { allowed: false; reason: "PER_REQUEST_LIMIT_EXCEEDED" | "ROLLING_WINDOW_LIMIT_EXCEEDED" }
+  >;
+}
+
+export interface SpendLimitPolicy {
+  /** Largest single request this buyer may settle against this seller. */
+  maxAmountPerRequest: string;
+  /** Rolling cap across the window below, summed over confirmed-pending reservations. */
+  maxAmountPerWindow: string;
+  windowMs: number;
+}

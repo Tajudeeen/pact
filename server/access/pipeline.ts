@@ -15,6 +15,7 @@ import type {
   PaymentRequirement,
   ProtectedResource,
   SettlementResult,
+  SpendLimitLedger,
 } from "./contracts";
 
 export interface AgentOwnerBindingVerifier {
@@ -52,6 +53,8 @@ export interface AccessPipelineDependencies<T> {
   payments: ConcordiumX402Settlement;
   resource: ProtectedResource<T>;
   audit: AccessAuditWriter;
+  /** Optional. When absent, no deterministic spend cap is enforced beyond the proof. */
+  spendLimits?: SpendLimitLedger;
   now?: () => Date;
 }
 
@@ -73,7 +76,8 @@ export class AccessPipelineError extends Error {
       | "OWNER_BINDING_FAILED"
       | "PAYMENT_NOT_CONFIRMED"
       | "SETTLEMENT_NETWORK_MISMATCH"
-      | "DELIVERY_FAILED",
+      | "DELIVERY_FAILED"
+      | "SPEND_LIMIT_EXCEEDED",
   ) {
     super(message);
     this.name = "AccessPipelineError";
@@ -166,6 +170,24 @@ export class AccessPipeline<T> {
     if (input.paymentPayload.value.sender !== context.payerAccount)
       throw new AccessPipelineError("x402 sender does not match the agent's registered payment wallet.", "PAYMENT_NOT_CONFIRMED");
     await this.assertRequirement(input.requirement, context);
+
+    if (this.deps.spendLimits) {
+      const reservation = await this.deps.spendLimits.reserve({
+        sellerId: context.sellerId,
+        buyerAgentId: context.buyerAgentId,
+        amount: input.requirement.amount,
+        asset: input.requirement.asset,
+        now: this.now(),
+      });
+      if (!reservation.allowed) {
+        await this.denyAtPaymentStage(input.requestId, reservation.reason);
+        throw new AccessPipelineError(
+          "This request exceeds the buyer's configured spend limit with this seller.",
+          "SPEND_LIMIT_EXCEEDED",
+        );
+      }
+    }
+
     await this.deps.requests.transition(input.requestId, "proof_verified", "payment_started");
   }
 
@@ -453,6 +475,21 @@ export class AccessPipeline<T> {
     reason: InvalidAccountProof["reason"] | "proof_context_mismatch" | "agent_owner_binding_failed" | "challenge_replayed",
   ) {
     await this.deps.requests.transition(requestId, expected, "proof_invalid", { reason });
+    await this.deps.audit.append({
+      requestId,
+      state: "denied",
+      at: this.now().toISOString(),
+      reasonCode: reason,
+    });
+  }
+
+  /** Same shape as deny(), for a denial that happens after proof is already verified
+   *  (e.g. a spend-limit rejection), which transitions via request_denied rather than proof_invalid. */
+  private async denyAtPaymentStage(
+    requestId: string,
+    reason: "PER_REQUEST_LIMIT_EXCEEDED" | "ROLLING_WINDOW_LIMIT_EXCEEDED",
+  ) {
+    await this.deps.requests.transition(requestId, "proof_verified", "request_denied", { reason });
     await this.deps.audit.append({
       requestId,
       state: "denied",
